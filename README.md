@@ -1,6 +1,6 @@
-# A javascript utility to make use of the Public Suffix List
+# publicsuffixlist.js
 
-Ok, no wall of text.
+A javascript utility to make use of the Public Suffix List
 
 This is just an implementation to deal with domain while taking into account
 [Mozilla Foundation's Public Suffix List](http://publicsuffix.org). Follow
@@ -42,7 +42,9 @@ footprint of `tld.js` would go much, *much* higher. The memory footprint of
 Also, `tld.js` currently fails with the Unicode rules present in the Public
 Suffix List.
 
-So that is mainly why `publicsuffixlist.js`.
+So that is mainly why `publicsuffixlist.js`, something fast and mindful of
+memory was key in that [other project](https://github.com/gorhill/httpswitchboard)
+which has to deal in realtime with web requests.
 
 ## Usage
 
