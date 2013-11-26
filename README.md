@@ -60,8 +60,8 @@ which has to deal in realtime with web requests.
 var psl = new PublicSuffixList();
 
 // Feed it the list (you choose how you obtain it). Need to pass a converter
-// to punycode (punycode.js is awesome.)
-psl.parse(tehList, punycode.toASCII);
+// to punycode (punycode.js is awesome.). `list` must be unicode text.
+psl.parse(list, punycode.toASCII);
 
 ...
 
@@ -74,8 +74,8 @@ var domain = psl.getDomain('whatisthis.global.prod.fastly.net');
 var domain = psl.getDomain('something.uk');
 // domain = ''
 
-var domain = psl.getDomain('something.uk');
-// domain = ''
+var domain = psl.getDomain('www.xn--85x722f.xn--55qx5d.cn');
+// domain = 'xn--85x722f.xn--55qx5d.cn'
 
 Etc.
 
