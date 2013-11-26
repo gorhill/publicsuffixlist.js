@@ -51,7 +51,7 @@ which has to deal in realtime with web requests.
 
 ## Usage
 
-```
+```js
 <script src="punycode.js"></script>
 <script src="publicsuffixlist.js"></script>
 
@@ -59,8 +59,10 @@ which has to deal in realtime with web requests.
 
 var psl = new PublicSuffixList();
 
-// Feed it the list (you choose how you obtain it). Need to pass a converter
-// to punycode (punycode.js is awesome.). `list` must be unicode text.
+// Feed it the list (you choose how you obtain it).
+// `list` must be unicode text.
+// Need to pass a converter to punycode (punycode.js is
+// awesome: https://github.com/bestiejs/punycode.js).
 psl.parse(list, punycode.toASCII);
 
 ...
