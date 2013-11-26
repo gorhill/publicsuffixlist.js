@@ -14,7 +14,7 @@ Public Suffix List: <https://github.com/oncletom/tld.js>.
 
 However, glancing at it I could see right away that it would not fullfill my
 requirements: minding memory footprint and CPU cycles. Hence this version,
-which address both concerns.
+which addresses both concerns.
 
 Benchmark: Randomly picking 20 hostnames from all over the world, and
 for each of these extracting the domain name (that would be the hostname for
