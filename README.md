@@ -13,7 +13,7 @@ Now there was an existing javascript library dealing with the
 Public Suffix List: <https://github.com/oncletom/tld.js>.
 
 However, glancing at it I could see right away that it would not fullfill my
-requirement: minding memory footprint and CPU cycles. Hence this version,
+requirements: minding memory footprint and CPU cycles. Hence this version,
 which address both concerns.
 
 Benchmark: Randomly picking 20 hostnames from all over the world, and
