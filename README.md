@@ -1,6 +1,9 @@
 # publicsuffixlist.js
 
-A javascript utility to make use of Mozilla Foundation's Public Suffix List.
+A javascript utility to make use of [Mozilla Foundation's Public Suffix
+List](http://publicsuffix.org).
+
+## Why?
 
 This is just an implementation to deal with domain while taking into account
 [Mozilla Foundation's Public Suffix List](http://publicsuffix.org). Follow
