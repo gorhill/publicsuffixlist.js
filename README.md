@@ -59,15 +59,22 @@ which has to deal in realtime with web requests.
 
 var psl = new PublicSuffixList();
 
-// feed it the list (you choose how you obtain it)
+// Feed it the list (you choose how you obtain it). Need to pass a converter
+// to punycode (punycode.js is awesome.)
 psl.parse(tehList, punycode.toASCII);
 
 ...
 
-var domain = PSL.getDomain('whatisthis.global.prod.fastly.net');
+// Caller is responsible to pass in hostnames which are "canonicalized in the
+// normal way for hostnames": lower-case, punycode, and only a-z, 0-9, -, .
+
+var domain = psl.getDomain('whatisthis.global.prod.fastly.net');
 // domain = 'global.prod.fastly.net' (yep, who knew)
 
-var domain = PSL.getDomain('something.uk');
+var domain = psl.getDomain('something.uk');
+// domain = ''
+
+var domain = psl.getDomain('something.uk');
 // domain = ''
 
 Etc.
