@@ -1,6 +1,7 @@
 /*******************************************************************************
 
-    httpswitchboard - a Chromium browser extension to black/white list requests.
+    publicsuffixlist.js - an efficient javascript implementation to deal with
+    Mozilla Foundation's Public Suffix List <http://publicsuffix.org/list/>
     Copyright (C) 2013  Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
@@ -16,7 +17,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see {http://www.gnu.org/licenses/}.
 
-    Home: https://github.com/gorhill/
+    Home: https://github.com/gorhill/publicsuffixlist.js
+
+    This code is mostly dumb: I consider this to be lower-level code, thus
+    in order to ensure efficiency, the caller is responsible for sanitizing
+    the inputs.
 */
 
 function PublicSuffixList() {
@@ -31,85 +36,6 @@ function PublicSuffixList() {
 
 /******************************************************************************/
 
-PublicSuffixList.prototype.mustPunycode = /[^a-z0-9.-]/;
-
-/******************************************************************************/
-
-// Parse and set a UTF-8 text-based suffix list. Format is same as found at:
-// http://publicsuffix.org/list/
-
-PublicSuffixList.prototype.parse = function(text) {
-    var exceptions = this.exceptions = {};
-    var rules = this.rules = {};
-
-    // First step is to find and categorize all suffixes.
-    var lines = text.split('\n');
-    var i = lines.length;
-    var line, store, pos, tld;
-
-    while ( i-- ) {
-        line = lines[i];
-
-        // Ignore comments
-        beg = line.indexOf('//');
-        if ( beg >= 0 ) {
-            line = line.slice(0, beg);
-        }
-
-        // Ignore surrounding whitespaces
-        line = line.trim();
-        if ( !line ) {
-            continue;
-        }
-
-        // http://publicsuffix.org/list/:
-        // "... all rules must be canonicalized in the normal way
-        // for hostnames - lower-case, Punycode ..."
-        line = line.toLowerCase();
-
-        if ( this.mustPunycode.test(line) ) {
-            line = punycode.toASCII(line);
-        }
-
-        // Is this an exception rule?
-        if ( line.charAt(0) === '!' ) {
-            store = exceptions;
-            line = line.slice(1);
-        } else {
-            store = rules;
-        }
-
-        // Extract TLD
-        pos = line.lastIndexOf('.');
-        if ( pos < 0 ) {
-            tld = line;
-        } else {
-            tld = line.slice(pos + 1);
-            line = line.slice(0, pos);
-        }
-
-        // Store suffix using tld as key
-        if ( !store[tld] ) {
-            store[tld] = [];
-        }
-        if ( line ) {
-            store[tld].push(line);
-        }
-    }
-    this.crystallize(exceptions);
-    this.crystallize(rules);
-};
-
-/******************************************************************************/
-
-// Check whether a string is a domain.
-
-PublicSuffixList.prototype.isDomain = function(hostname) {
-    return PublicSuffixList.getDomain(hostname) === hostname;
-};
-
-/******************************************************************************/
-
 // In the context of this code, a domain is defined as a label prefixing
 // a public suffix. A single standalone label is a public suffix as per:
 // http://publicsuffix.org/list/
@@ -118,6 +44,8 @@ PublicSuffixList.prototype.isDomain = function(hostname) {
 // code, since according to the definition above, it would be
 // evaluated as a public suffix. The caller is threfore responsible to
 // decide how to further interpret such public suffix.
+//
+// `hostname` must be a valid ascii-based hostname.
 
 PublicSuffixList.prototype.getDomain = function(hostname) {
     // A hostname starting with a dot is not a valid hostname.
@@ -138,15 +66,9 @@ PublicSuffixList.prototype.getDomain = function(hostname) {
 
 /******************************************************************************/
 
-// Check whether a string is a public suffix. 
-
-PublicSuffixList.prototype.isPublicSuffix = function(suffix) {
-    return this.getPublicSuffix(suffix) === suffix;
-};
-
-/******************************************************************************/
-
 // Return longest public suffix.
+//
+// `suffix` must be a valid ascii-based string which respect hostname naming.
 
 PublicSuffixList.prototype.getPublicSuffix = function(suffix) {
     if ( !suffix ) {
@@ -176,6 +98,26 @@ PublicSuffixList.prototype.getPublicSuffix = function(suffix) {
 
 /******************************************************************************/
 
+PublicSuffixList.prototype.mustPunycode = /[^a-z0-9.-]/;
+
+/******************************************************************************/
+
+// Check whether a string is a domain.
+
+PublicSuffixList.prototype.isDomain = function(hostname) {
+    return PublicSuffixList.getDomain(hostname) === hostname;
+};
+
+/******************************************************************************/
+
+// Check whether a string is a public suffix. 
+
+PublicSuffixList.prototype.isPublicSuffix = function(suffix) {
+    return this.getPublicSuffix(suffix) === suffix;
+};
+
+/******************************************************************************/
+
 // Look up a specific hostname.
 
 PublicSuffixList.prototype.search = function(store, hostname) {
@@ -201,23 +143,94 @@ PublicSuffixList.prototype.search = function(store, hostname) {
     var l = remainder.length;
     var haystack = substore[l];
     if ( !haystack ) {
-	    return false;
+        return false;
     }
     var left = 0;
     var right = Math.floor(haystack.length / l + 0.5);
-    var i;
+    var i, needle;
     while ( left < right ) {
         i = left + right >> 1;
-	    needle = haystack.substr( l * i, l );
-	    if ( remainder < needle ) {
-		    right = i;
-	    } else if ( remainder > needle ) {
-		    left = i + 1;
-	    } else {
-		    return true;
-	    }
+        needle = haystack.substr( l * i, l );
+        if ( remainder < needle ) {
+            right = i;
+        } else if ( remainder > needle ) {
+            left = i + 1;
+        } else {
+            return true;
+        }
     }
     return false;
+};
+
+/******************************************************************************/
+
+// Parse and set a UTF-8 text-based suffix list. Format is same as found at:
+// http://publicsuffix.org/list/
+//
+// `toAscii` is a converter from unicode to punycode. Required since the
+// Public Suffix List contains unicode character.
+// Suggestion: use <https://github.com/bestiejs/punycode.js> it's quite good.
+
+PublicSuffixList.prototype.parse = function(text, toAscii) {
+    var exceptions = this.exceptions = {};
+    var rules = this.rules = {};
+
+    // First step is to find and categorize all suffixes.
+    var lines = text.split('\n');
+    var i = lines.length;
+    var line, store, pos, tld;
+
+    while ( i-- ) {
+        line = lines[i];
+
+        // Ignore comments
+        pos = line.indexOf('//');
+        if ( pos >= 0 ) {
+            line = line.slice(0, pos);
+        }
+
+        // Ignore surrounding whitespaces
+        line = line.trim();
+        if ( !line ) {
+            continue;
+        }
+
+        // http://publicsuffix.org/list/:
+        // "... all rules must be canonicalized in the normal way
+        // for hostnames - lower-case, Punycode ..."
+        line = line.toLowerCase();
+
+        if ( this.mustPunycode.test(line) ) {
+            line = toAscii(line);
+        }
+
+        // Is this an exception rule?
+        if ( line.charAt(0) === '!' ) {
+            store = exceptions;
+            line = line.slice(1);
+        } else {
+            store = rules;
+        }
+
+        // Extract TLD
+        pos = line.lastIndexOf('.');
+        if ( pos < 0 ) {
+            tld = line;
+        } else {
+            tld = line.slice(pos + 1);
+            line = line.slice(0, pos);
+        }
+
+        // Store suffix using tld as key
+        if ( !store[tld] ) {
+            store[tld] = [];
+        }
+        if ( line ) {
+            store[tld].push(line);
+        }
+    }
+    this.crystallize(exceptions);
+    this.crystallize(rules);
 };
 
 /******************************************************************************/
