@@ -70,8 +70,8 @@ psl.parse(list, punycode.toASCII);
 // Caller is responsible to pass in hostnames which are "canonicalized in the
 // normal way for hostnames": lower-case, punycode, and only a-z, 0-9, -, .
 
-var domain = psl.getDomain('whatisthis.global.prod.fastly.net');
-// domain = 'global.prod.fastly.net' (yep, who knew)
+var domain = psl.getDomain('haha.whatisthis.global.prod.fastly.net');
+// domain = 'whatisthis.global.prod.fastly.net' (yep, who knew)
 
 var domain = psl.getDomain('something.uk');
 // domain = ''
