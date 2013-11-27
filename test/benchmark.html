@@ -12,10 +12,12 @@
 <script src="lodash.js"></script>
 <script src="benchmark.js"></script>
 <script src="tld.min.js"></script>
+<script src="uri.min.js"></script>
 <script src="punycode.min.js"></script>
 <script src="../publicsuffixlist.min.js"></script>
 <script>
 var tldjs = new tld();
+var urijs = new URI();
 
 // I got this list from:
 //   https://github.com/medialize/URI.js/blob/gh-pages/src/SecondLevelDomains.js
@@ -213,10 +215,34 @@ function doBenchmark() {
     }
     document.getElementById('results').innerHTML = '';
     hostnamesRnd = createRandomHostnameSample(hostnamePool, n);
-    stdout('Hostnames to be used in this run:\n');
+    stdout('Benchmarking the extraction of the domain name of the following hostnames:\n');
     stdout('   ' + hostnamesRnd.join('\n   '));
-    stdout('\n\n');
+    stdout('\n\nResults...\n\n');
     benchmarkSuite.run({ 'async': true });
+}
+
+function doTldjsBenchmark() {
+    var hostnames = hostnamesRnd;
+    var i = hostnames.length;
+    while ( i-- ) {
+        var domain = tldjs.getDomain(hostnames[i]);
+    }
+}
+
+function doUrijsBenchmark() {
+    var hostnames = hostnamesRnd;
+    var i = hostnames.length;
+    while ( i-- ) {
+        var domain = urijs.hostname(hostnames[i]).domain();
+    }
+}
+
+function doPsljsBenchmark() {
+    var hostnames = hostnamesRnd;
+    var i = hostnames.length;
+    while ( i-- ) {
+        var domain = publicSuffixList.getDomain(hostnames[i]);
+    }
 }
 
 function benchmarkCycleHandler(event) {
@@ -228,20 +254,9 @@ function benchmarkResultHandler(event) {
 
 benchmarkSuite = new Benchmark.Suite;
 benchmarkSuite
-    .add('tld.js', function() {
-        var hostnames = hostnamesRnd;
-        var i = hostnames.length;
-        while ( i-- ) {
-            var domain = tldjs.getDomain(hostnames[i]);
-        }
-    })
-    .add('publicsuffixlist.js', function() {
-        var hostnames = hostnamesRnd;
-        var i = hostnames.length;
-        while ( i-- ) {
-            var domain = publicSuffixList.getDomain(hostnames[i]);
-        }
-    })
+    .add('github.com/oncletom/tld.js', doTldjsBenchmark)
+    .add('github.com/medialize/URI.js', doUrijsBenchmark)
+    .add('github.com/gorhill/publicsuffixlist.js', doPsljsBenchmark)
     .on('cycle', benchmarkCycleHandler)
     .on('complete', benchmarkResultHandler);
 
