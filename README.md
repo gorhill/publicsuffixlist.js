@@ -55,28 +55,28 @@ which has to deal in realtime with web requests.
 <script src="punycode.js"></script>
 <script src="publicsuffixlist.js"></script>
 
-...
+// window.publixSuffixList should now be present.
 
-var psl = new PublicSuffixList();
+...
 
 // Feed it the list (you choose how you obtain it).
 // `list` must be unicode text.
 // Need to pass a converter to punycode (punycode.js is
 // awesome: https://github.com/bestiejs/punycode.js).
-psl.parse(list, punycode.toASCII);
+window.publixSuffixList.parse(list, punycode.toASCII);
 
 ...
 
 // Caller is responsible to pass in hostnames which are "canonicalized in the
 // normal way for hostnames": lower-case, punycode, and only a-z, 0-9, -, .
 
-var domain = psl.getDomain('haha.whatisthis.global.prod.fastly.net');
+var domain = window.publixSuffixList.getDomain('haha.whatisthis.global.prod.fastly.net');
 // domain = 'whatisthis.global.prod.fastly.net' (yep, who knew)
 
-var domain = psl.getDomain('something.uk');
+var domain = window.publixSuffixList.getDomain('something.uk');
 // domain = ''
 
-var domain = psl.getDomain('www.xn--85x722f.xn--55qx5d.cn');
+var domain = window.publixSuffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
 // domain = 'xn--85x722f.xn--55qx5d.cn'
 
 Etc.
