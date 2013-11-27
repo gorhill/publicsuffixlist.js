@@ -1,7 +1,7 @@
 # publicsuffixlist.js
 
 A javascript utility to make use of [Mozilla Foundation's Public Suffix
-List](http://publicsuffix.org).
+List](http://publicsuffix.org) ("PSL").
 
 ## Why?
 
@@ -18,7 +18,7 @@ which addresses both concerns.
 
 Benchmark: Randomly picking 20 hostnames from all over the world, and
 for each of these extracting the domain name (that would be the hostname for
-which it is safe to set cookies, etc.). Typical result (corrected after I
+which it is safe to set cookies, etc.). Typical results (corrected after I
 found the results for `tld.js` differs greatly if the browser console is
 opened -- weird):
 
@@ -48,12 +48,8 @@ tld.js             : 381,400 bytes
 publicsuffixlist.js: 172,096 bytes
 ```
 
-If one was to force all the Public Suffix List rules to be hit, the memory
-footprint of `tld.js` would go much, *much* higher. The memory footprint of
-`publicsuffixlist.js` will never grow, it is static.
-
 Also, `tld.js` currently fails with the Unicode rules present in the Public
-Suffix List.
+Suffix List (the rules are supposed to be normalized as per PSL documentation).
 
 So that is mainly why `publicsuffixlist.js`, something fast and mindful of
 memory was key in that [other project](https://github.com/gorhill/httpswitchboard)
