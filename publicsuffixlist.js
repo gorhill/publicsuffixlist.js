@@ -170,6 +170,7 @@ function parse(text, toAscii) {
     var lines = text.split('\n');
     var i = lines.length;
     var line, store, pos, tld;
+    var isICANN = false;
 
     while ( i-- ) {
         line = lines[i];
@@ -177,7 +178,22 @@ function parse(text, toAscii) {
         // Ignore comments
         pos = line.indexOf('//');
         if ( pos >= 0 ) {
+            // rhill 2013-11-27: turn on/off ICANN switch. Apparently
+            // we can't rely too much on privately submitted public suffixes
+            // from being taken into account. I saw a successful web page
+            // request to `s3.amazonaws.com` which is supposed to be a public
+            // suffix, not a domain...
+            if ( line.indexOf('===BEGIN ICANN DOMAINS===') > 0 ) {
+                isICANN = true;
+            } else if ( line.indexOf('===END ICANN DOMAINS===') > 0 ) {
+                isICANN = false;
+            }
             line = line.slice(0, pos);
+        }
+
+        // Ignore non-ICANN stuff
+        if ( !isICANN ) {
+            continue;
         }
 
         // Ignore surrounding whitespaces
