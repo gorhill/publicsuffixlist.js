@@ -1,3 +1,5 @@
+Build status: broken
+
 # publicsuffixlist.js
 
 A javascript utility to make use of [Mozilla Foundation's Public Suffix
