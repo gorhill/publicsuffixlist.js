@@ -17,22 +17,33 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see {http://www.gnu.org/licenses/}.
 
-    Home: https://github.com/gorhill/publicsuffixlist.js
+*/
 
+/*! Home: https://github.com/gorhill/publicsuffixlist.js */
+
+/*
     This code is mostly dumb: I consider this to be lower-level code, thus
     in order to ensure efficiency, the caller is responsible for sanitizing
     the inputs.
 */
 
-function PublicSuffixList() {
-    this.exceptions = {};
-    this.rules = {};
-    // This value dictate how the search will be performed:
-    //    < this.cutoffLength = indexOf()
-    //   >= this.cutoffLength = binary search
-    this.cutoffLength = 480;
-    // var rawText = readLocalTextFile('assets/thirdparties/mxr.mozilla.org/effective_tld_names.dat');
-}
+/******************************************************************************/
+
+// A single instance of PublicSuffixList is enough.
+
+;(function(root) {
+
+/******************************************************************************/
+
+var exceptions = {};
+var rules = {};
+
+// This value dictate how the search will be performed:
+//    < this.cutoffLength = indexOf()
+//   >= this.cutoffLength = binary search
+var cutoffLength = 480;
+
+var mustPunycode = /[^a-z0-9.-]/;
 
 /******************************************************************************/
 
@@ -47,13 +58,13 @@ function PublicSuffixList() {
 //
 // `hostname` must be a valid ascii-based hostname.
 
-PublicSuffixList.prototype.getDomain = function(hostname) {
+function getDomain(hostname) {
     // A hostname starting with a dot is not a valid hostname.
     if ( !hostname || hostname.charAt(0) === '.' ) {
         return '';
     }
     hostname = hostname.toLowerCase();
-    var suffix = this.getPublicSuffix(hostname);
+    var suffix = getPublicSuffix(hostname);
     if ( suffix === hostname ) {
         return '';
     }
@@ -62,65 +73,45 @@ PublicSuffixList.prototype.getDomain = function(hostname) {
         return hostname;
     }
     return hostname.slice(pos + 1);
-};
+}
 
 /******************************************************************************/
 
 // Return longest public suffix.
 //
-// `suffix` must be a valid ascii-based string which respect hostname naming.
+// `hostname` must be a valid ascii-based string which respect hostname naming.
 
-PublicSuffixList.prototype.getPublicSuffix = function(suffix) {
-    if ( !suffix ) {
+function getPublicSuffix(hostname) {
+    if ( !hostname ) {
         return '';
     }
-    // Since we slice down the suffix with each pass, the first match
+    // Since we slice down the hostname with each pass, the first match
     // is the longest, so no need to find all the matching rules.
     var pos;
     while ( true ) {
-        pos = suffix.indexOf('.');
+        pos = hostname.indexOf('.');
         if ( pos < 0 ) {
-            break;
+            return hostname;
         }
-        if ( this.search(this.exceptions, suffix) ) {
-            return suffix.slice(pos + 1);
+        if ( search(exceptions, hostname) ) {
+            return hostname.slice(pos + 1);
         }
-        if ( this.search(this.rules, suffix) ) {
-            return suffix;
+        if ( search(rules, hostname) ) {
+            return hostname;
         }
-        if ( this.search(this.rules, '*' + suffix.slice(pos)) ) {
-            return suffix;
+        if ( search(rules, '*' + hostname.slice(pos)) ) {
+            return hostname;
         }
-        suffix = suffix.slice(pos + 1);
+        hostname = hostname.slice(pos + 1);
     }
-    return suffix;
-};
-
-/******************************************************************************/
-
-PublicSuffixList.prototype.mustPunycode = /[^a-z0-9.-]/;
-
-/******************************************************************************/
-
-// Check whether a string is a domain.
-
-PublicSuffixList.prototype.isDomain = function(hostname) {
-    return PublicSuffixList.getDomain(hostname) === hostname;
-};
-
-/******************************************************************************/
-
-// Check whether a string is a public suffix. 
-
-PublicSuffixList.prototype.isPublicSuffix = function(suffix) {
-    return this.getPublicSuffix(suffix) === suffix;
-};
+    // unreachable
+}
 
 /******************************************************************************/
 
 // Look up a specific hostname.
 
-PublicSuffixList.prototype.search = function(store, hostname) {
+function search(store, hostname) {
     // Extract TLD
     var pos = hostname.lastIndexOf('.');
     var tld, remainder;
@@ -160,7 +151,7 @@ PublicSuffixList.prototype.search = function(store, hostname) {
         }
     }
     return false;
-};
+}
 
 /******************************************************************************/
 
@@ -171,9 +162,9 @@ PublicSuffixList.prototype.search = function(store, hostname) {
 // Public Suffix List contains unicode character.
 // Suggestion: use <https://github.com/bestiejs/punycode.js> it's quite good.
 
-PublicSuffixList.prototype.parse = function(text, toAscii) {
-    var exceptions = this.exceptions = {};
-    var rules = this.rules = {};
+function parse(text, toAscii) {
+    exceptions = {};
+    rules = {};
 
     // First step is to find and categorize all suffixes.
     var lines = text.split('\n');
@@ -200,7 +191,7 @@ PublicSuffixList.prototype.parse = function(text, toAscii) {
         // for hostnames - lower-case, Punycode ..."
         line = line.toLowerCase();
 
-        if ( this.mustPunycode.test(line) ) {
+        if ( mustPunycode.test(line) ) {
             line = toAscii(line);
         }
 
@@ -229,17 +220,16 @@ PublicSuffixList.prototype.parse = function(text, toAscii) {
             store[tld].push(line);
         }
     }
-    this.crystallize(exceptions);
-    this.crystallize(rules);
-};
+    crystallize(exceptions);
+    crystallize(rules);
+}
 
 /******************************************************************************/
 
 // Cristallize the storage of suffixes using optimal internal representation
 // for future look up.
 
-PublicSuffixList.prototype.crystallize = function(store) {
-    var cutoffLength = this.cutoffLength;
+function crystallize(store) {
     var suffixes, suffix, i, l;
 
     for ( var tld in store ) {
@@ -279,5 +269,20 @@ PublicSuffixList.prototype.crystallize = function(store) {
         store[tld] = suffixes;
     }
     return store;
+}
+
+/******************************************************************************/
+
+// Public API
+
+root.publicSuffixList = {
+	'version': '1.0',
+    'parse': parse,
+	'getDomain': getDomain,
+    'getPublicSuffix': getPublicSuffix
 };
+
+/******************************************************************************/
+
+})(this);
 
