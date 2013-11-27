@@ -42,7 +42,6 @@ var rules = {};
 //    < this.cutoffLength = indexOf()
 //   >= this.cutoffLength = binary search
 var cutoffLength = 480;
-
 var mustPunycode = /[^a-z0-9.-]/;
 
 /******************************************************************************/
@@ -280,9 +279,9 @@ function crystallize(store) {
 // Public API
 
 root.publicSuffixList = {
-	'version': '1.0',
+    'version': '1.0',
     'parse': parse,
-	'getDomain': getDomain,
+    'getDomain': getDomain,
     'getPublicSuffix': getPublicSuffix
 };
 
