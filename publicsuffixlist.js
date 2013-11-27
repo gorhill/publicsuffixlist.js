@@ -47,13 +47,14 @@ var mustPunycode = /[^a-z0-9.-]/;
 
 /******************************************************************************/
 
-// In the context of this code, a domain is defined as a label prefixing
-// a public suffix. A single standalone label is a public suffix as per:
-// http://publicsuffix.org/list/
-// "If no rules match, the prevailing rule is '*' "
+// In the context of this code, a domain is defined as:
+//   "{label}.{public suffix}".
+// A single standalone label is a public suffix as per
+// http://publicsuffix.org/list/:
+//   "If no rules match, the prevailing rule is '*' "
 // This means 'localhost' is not deemed a domain by this
 // code, since according to the definition above, it would be
-// evaluated as a public suffix. The caller is threfore responsible to
+// evaluated as a public suffix. The caller is therefore responsible to
 // decide how to further interpret such public suffix.
 //
 // `hostname` must be a valid ascii-based hostname.
@@ -250,6 +251,9 @@ function crystallize(store) {
         }
         // Concatenated list of suffixes greater or equal to cutoff length
         //   Store as array keyed on suffix length, lookup using binary search.
+        // I borrowed the idea to key on string length here:
+        //   http://ejohn.org/blog/dictionary-lookups-in-javascript/#comment-392072
+
         i = store[tld].length;
         suffixes = [];
         while ( i-- ) {
