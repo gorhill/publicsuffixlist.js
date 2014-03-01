@@ -159,20 +159,33 @@ function search(store, hostname) {
 // http://publicsuffix.org/list/
 //
 // `toAscii` is a converter from unicode to punycode. Required since the
-// Public Suffix List contains unicode character.
+// Public Suffix List contains unicode characters.
 // Suggestion: use <https://github.com/bestiejs/punycode.js> it's quite good.
 
 function parse(text, toAscii) {
     exceptions = {};
     rules = {};
 
-    // First step is to find and categorize all suffixes.
-    var lines = text.split('\n');
-    var i = lines.length;
+    // http://publicsuffix.org/list/:
+    // "... all rules must be canonicalized in the normal way
+    // for hostnames - lower-case, Punycode ..."
+    text = text.toLowerCase();
+
+    var lineBeg = 0, lineEnd;
+    var textEnd = text.length;
     var line, store, pos, tld;
 
-    while ( i-- ) {
-        line = lines[i];
+    while ( lineBeg < textEnd ) {
+        lineEnd = text.indexOf('\n', lineBeg);
+        if ( lineEnd < 0 ) {
+            lineEnd = textEnd;
+        }
+        line = text.slice(lineBeg, lineEnd);
+        lineBeg = lineEnd + 1;
+
+        if ( line.length === 0 ) {
+            continue;
+        }
 
         // Ignore comments
         pos = line.indexOf('//');
@@ -185,11 +198,6 @@ function parse(text, toAscii) {
         if ( !line ) {
             continue;
         }
-
-        // http://publicsuffix.org/list/:
-        // "... all rules must be canonicalized in the normal way
-        // for hostnames - lower-case, Punycode ..."
-        line = line.toLowerCase();
 
         if ( mustPunycode.test(line) ) {
             line = toAscii(line);
