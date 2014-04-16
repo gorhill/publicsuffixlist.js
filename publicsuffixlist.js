@@ -221,7 +221,7 @@ function parse(text, toAscii) {
         }
 
         // Store suffix using tld as key
-        if ( !store[tld] || typeof store[tld] !== "object" ) {
+        if ( !store.hasOwnProperty(tld) ) {
             store[tld] = [];
         }
         if ( line ) {
