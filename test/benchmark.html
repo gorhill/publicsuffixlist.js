@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 </head>
 <body style="font: 14px sans-serif">
 <h1>Benchmark</h1>
@@ -14,7 +15,7 @@
 <script src="tld.min.js"></script>
 <script src="uri.min.js"></script>
 <script src="punycode.min.js"></script>
-<script src="../publicsuffixlist.min.js"></script>
+<script src="../publicsuffixlist.js"></script>
 <script>
 var tldjs = new tld();
 var urijs = new URI();
@@ -262,8 +263,8 @@ benchmarkSuite
 
 
 window.onload = function() {
-    var thelist = document.getElementById('thelist').innerText;
-    publicSuffixList.parse(thelist, punycode.toASCII);
+    var thelist = document.getElementById('thelist');
+    publicSuffixList.parse(thelist.innerText || thelist.textContent, punycode.toASCII);
     thelist = null;
 
     document.getElementById('runBenchmark').onclick = function() {

@@ -44,7 +44,8 @@ function checkPublicSuffix(a, b) {
 }
 
 window.onload = function() {
-    publicSuffixList.parse(document.getElementById('thelist').innerText || document.getElementById('thelist').textContent, punycode.toASCII);
+    var thelist = document.getElementById('thelist');
+    publicSuffixList.parse(thelist.innerText || thelist.textContent, punycode.toASCII);
     checkAll();
 };
 </script>
