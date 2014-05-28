@@ -69,20 +69,20 @@ which has to deal in realtime with web requests.
 // `list` must be unicode text.
 // Need to pass a converter to punycode (punycode.js is
 // awesome: https://github.com/bestiejs/punycode.js).
-window.publixSuffixList.parse(list, punycode.toASCII);
+window.publicSuffixList.parse(list, punycode.toASCII);
 
 ...
 
 // Caller is responsible to pass in hostnames which are "canonicalized in the
 // normal way for hostnames": lower-case, punycode, and only a-z, 0-9, -, .
 
-var domain = window.publixSuffixList.getDomain('haha.whatisthis.global.prod.fastly.net');
+var domain = window.publicSuffixList.getDomain('haha.whatisthis.global.prod.fastly.net');
 // domain = 'whatisthis.global.prod.fastly.net' (yep, who knew)
 
-var domain = window.publixSuffixList.getDomain('something.uk');
+var domain = window.publicSuffixList.getDomain('something.uk');
 // domain = ''
 
-var domain = window.publixSuffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
+var domain = window.publicSuffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
 // domain = 'xn--85x722f.xn--55qx5d.cn'
 
 Etc.
