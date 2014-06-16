@@ -22,8 +22,8 @@ function stdout(html) {
     parent.appendChild(div);
 }
 
-var resultTemplateGood = 'checkPublicSuffix({{a}}, {{b}}): <span style="color:green">Success!</span>';
-var resultTemplateBad = 'checkPublicSuffix({{a}}, {{b}}): <span style="color:red">Failed: got {{r}} instead</span>';
+var resultTemplateGood = '<span style="color:green">Success</span>: checkPublicSuffix({{a}}, {{b}})';
+var resultTemplateBad = '<span style="color:red">Failure: got {{r}} instead</span>: checkPublicSuffix({{a}}, {{b}})';
 
 function checkPublicSuffix(a, b) {
     // publicSuffixList() does not normalize Unicode, it is the caller's
