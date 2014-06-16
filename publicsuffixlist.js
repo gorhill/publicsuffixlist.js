@@ -178,9 +178,11 @@ function parse(text, toAscii) {
     while ( lineBeg < textEnd ) {
         lineEnd = text.indexOf('\n', lineBeg);
         if ( lineEnd < 0 ) {
-            lineEnd = textEnd;
+            lineEnd = text.indexOf('\r', lineBeg);
+                lineEnd = textEnd;
+            }
         }
-        line = text.slice(lineBeg, lineEnd);
+        line = text.slice(lineBeg, lineEnd).trim();
         lineBeg = lineEnd + 1;
 
         if ( line.length === 0 ) {
