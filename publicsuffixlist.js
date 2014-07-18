@@ -179,6 +179,7 @@ function parse(text, toAscii) {
         lineEnd = text.indexOf('\n', lineBeg);
         if ( lineEnd < 0 ) {
             lineEnd = text.indexOf('\r', lineBeg);
+            if ( lineEnd < 0 ) {
                 lineEnd = textEnd;
             }
         }
@@ -287,6 +288,8 @@ function crystallize(store) {
 /******************************************************************************/
 
 // Public API
+
+root = root || window;
 
 root.publicSuffixList = {
     'version': '1.0',
