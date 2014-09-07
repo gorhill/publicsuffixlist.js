@@ -37,6 +37,7 @@
 
 var exceptions = {};
 var rules = {};
+var selfieMagic = 'iscjsfsaolnm';
 
 // This value dictate how the search will be performed:
 //    < this.cutoffLength = indexOf()
@@ -287,6 +288,25 @@ function crystallize(store) {
 
 /******************************************************************************/
 
+function toSelfie() {
+    return {
+        magic: selfieMagic,
+        rules: rules,
+        exceptions: exceptions
+    };
+}
+
+function fromSelfie(selfie) {
+    if ( typeof selfie.magic !== 'string' || selfie.magic !== selfieMagic ) {
+        return false;
+    }
+    rules = selfie.rules;
+    exceptions = selfie.exceptions;
+    return true;
+}
+
+/******************************************************************************/
+
 // Public API
 
 root = root || window;
@@ -295,7 +315,9 @@ root.publicSuffixList = {
     'version': '1.0',
     'parse': parse,
     'getDomain': getDomain,
-    'getPublicSuffix': getPublicSuffix
+    'getPublicSuffix': getPublicSuffix,
+    'toSelfie': toSelfie,
+    'fromSelfie': fromSelfie
 };
 
 /******************************************************************************/
