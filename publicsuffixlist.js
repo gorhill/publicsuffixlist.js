@@ -297,7 +297,7 @@ function toSelfie() {
 }
 
 function fromSelfie(selfie) {
-    if ( typeof selfie.magic !== 'string' || selfie.magic !== selfieMagic ) {
+    if ( typeof selfie !== 'object' || typeof selfie.magic !== 'string' || selfie.magic !== selfieMagic ) {
         return false;
     }
     rules = selfie.rules;
