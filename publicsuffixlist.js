@@ -90,18 +90,18 @@ function getPublicSuffix(hostname) {
     // is the longest, so no need to find all the matching rules.
     var pos;
     while ( true ) {
-        pos = hostname.indexOf('.');
-        if ( pos < 0 ) {
-            return hostname;
-        }
-        if ( search(exceptions, hostname) ) {
-            return hostname.slice(pos + 1);
-        }
         if ( search(rules, hostname) ) {
             return hostname;
         }
         if ( search(rules, '*' + hostname.slice(pos)) ) {
             return hostname;
+        }
+        pos = hostname.indexOf('.');
+        if ( pos < 0 ) {
+            return '';
+        }
+        if ( search(exceptions, hostname) ) {
+            return hostname.slice(pos + 1);
         }
         hostname = hostname.slice(pos + 1);
     }
@@ -323,4 +323,3 @@ root.publicSuffixList = {
 /******************************************************************************/
 
 })(this);
-
