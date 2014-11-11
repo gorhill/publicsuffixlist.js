@@ -92,7 +92,7 @@ function getPublicSuffix(hostname) {
     while ( true ) {
         pos = hostname.indexOf('.');
         if ( pos < 0 ) {
-            return hostname;
+            return '';
         }
         if ( search(exceptions, hostname) ) {
             return hostname.slice(pos + 1);
