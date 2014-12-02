@@ -92,7 +92,8 @@ Etc.
 
 ```
 var suffixList = require('./publicsuffixlist');
-var punycode = require('punycode');
+// For utf-8 conversion - npm install punycode
+var punycode = require('punycode'); 
 var fs = require('fs');
 
 // Suffix list downloaded from https://publicsuffix.org/list/effective_tld_names.dat
