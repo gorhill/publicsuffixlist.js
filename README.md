@@ -86,6 +86,30 @@ var domain = window.publicSuffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
 // domain = 'xn--85x722f.xn--55qx5d.cn'
 
 Etc.
+```
+
+## Usage with node.js
+
+```
+var suffixList = require('./publicsuffixlist');
+var punycode = require('punycode');
+var fs = require('fs');
+
+// Suffix list downloaded from https://publicsuffix.org/list/effective_tld_names.dat
+var suffixData = fs.readFileSync('./effective_tld_names.dat', 'utf8');
+
+suffixList.parse(suffixData, punycode.toASCII);
+
+var domain = suffixList.getDomain('haha.whatisthis.global.prod.fastly.net');
+// domain = 'whatisthis.global.prod.fastly.net' (yep, who knew)
+
+var domain = suffixList.getDomain('something.uk');
+// domain = ''
+
+var domain = suffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
+// domain = 'xn--85x722f.xn--55qx5d.cn'
+
+```
 
 ```
 
