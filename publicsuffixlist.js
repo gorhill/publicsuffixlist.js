@@ -301,7 +301,7 @@ function fromSelfie(selfie) {
 
 root = root || window;
 
-root.publicSuffixList = {
+module.exports = {
     'version': '1.0',
     'parse': parse,
     'getDomain': getDomain,
@@ -309,6 +309,8 @@ root.publicSuffixList = {
     'toSelfie': toSelfie,
     'fromSelfie': fromSelfie
 };
+
+root.publicSuffixList = module.exports;
 
 /******************************************************************************/
 
