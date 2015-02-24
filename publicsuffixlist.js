@@ -310,9 +310,11 @@ root.publicSuffixList = {
     'fromSelfie': fromSelfie
 };
 
-if(typeof module !== "undefined") module.exports = root.publicSuffixList;
-
-if(typeof exports !== "undefined") exports = root.publicSuffixList;
+if ( typeof module !== "undefined" ) { 
+    module.exports = root.publicSuffixList;
+} else if ( typeof exports !== "undefined" ) {
+    exports = root.publicSuffixList;
+}
 
 /******************************************************************************/
 
