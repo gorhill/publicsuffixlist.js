@@ -79,7 +79,7 @@ window.publicSuffixList.parse(list, punycode.toASCII);
 var domain = window.publicSuffixList.getDomain('haha.whatisthis.global.prod.fastly.net');
 // domain = 'whatisthis.global.prod.fastly.net' (yep, who knew)
 
-var domain = window.publicSuffixList.getDomain('something.uk');
+var domain = window.publicSuffixList.getDomain('police.uk');
 // domain = ''
 
 var domain = window.publicSuffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
