@@ -104,7 +104,7 @@ suffixList.parse(suffixData, punycode.toASCII);
 var domain = suffixList.getDomain('haha.whatisthis.global.prod.fastly.net');
 // domain = 'whatisthis.global.prod.fastly.net' (yep, who knew)
 
-var domain = suffixList.getDomain('something.uk');
+var domain = suffixList.getDomain('police.uk');
 // domain = ''
 
 var domain = suffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
