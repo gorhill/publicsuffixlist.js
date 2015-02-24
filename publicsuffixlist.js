@@ -312,6 +312,8 @@ root.publicSuffixList = {
 
 if(typeof module !== "undefined") module.exports = root.publicSuffixList;
 
+if(typeof exports !== "undefined") exports = root.publicSuffixList;
+
 /******************************************************************************/
 
 })(this);
