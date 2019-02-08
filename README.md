@@ -11,7 +11,7 @@ the link to understand why such a list is needed.
 
 ## Test and benchmark
 
-See [test and benchmark](docs/index.html) pages.
+See [test and benchmark](https://gorhill.github.io/publicsuffixlist.js/) pages.
 
 **Warning:** the benchmark is using an older version of
 [`tld.js`](https://github.com/oncletom/tld.js). I have tried to use the latest
