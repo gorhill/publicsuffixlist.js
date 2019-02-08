@@ -1,6 +1,6 @@
 {
   "name": "publicsuffixlist",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Javascript utility to handle Public Suffix List from Mozilla Foundation",
   "main": "publicsuffixlist.js",
   "directories": {
