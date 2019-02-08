@@ -12,13 +12,15 @@
 
 <script src="lodash.js"></script>
 <script src="benchmark.js"></script>
-<script src="tld.min.js"></script>
+
+<!-- https://www.jsdelivr.com/package/npm/tldjs -->
+<script src="https://cdn.jsdelivr.net/npm/tldjs@2.3.1/tld.min.js"></script>
+
 <script src="uri.min.js"></script>
 <script src="punycode.min.js"></script>
 <!-- v1 --><script src="https://rawcdn.githack.com/gorhill/publicsuffixlist.js/f76f6bcdb7dcc951fa8e8739527fa3340469401e/publicsuffixlist.min.js"></script>
 <!-- v2 --><script src="https://raw.githack.com/gorhill/publicsuffixlist.js/master/publicsuffixlist.js"></script>
 <script>
-const tldjs = new tld();
 const urijs = new URI();
 
 // I got this list from:
@@ -203,21 +205,32 @@ function createRandomHostnameSample(pool, n) {
 
 var hostnamesRnd;
 var benchmarkSuite;
-var domains;
+const domains = [];
 
 function stdout(text) {
     var r = document.querySelector('#results');
     r.innerHTML = r.innerHTML + text;
 }
 
+function compare() {
+    for ( const hostname of hostnamesRnd ) {
+        console.log(`${hostname}:`);
+        console.log(`\ttldjs: ${tldjs.getDomain(hostname)}`);
+        console.log(`\turijs: ${urijs.hostname(hostname).domain()}`);
+        console.log(`\tpslv1: ${publicSuffixListV1.getDomain(hostname)}`);
+        console.log(`\tpslv2: ${publicSuffixList.getDomain(hostname)}`);
+    }
+}
+
 function doBenchmark() {
-    var n = parseInt(document.getElementById('hostnameCount').value);
+    let n = parseInt(document.getElementById('hostnameCount').value);
     if ( !n || n < 1 || n > 1000 ) {
         n = 20;
         document.getElementById('hostnameCount').value = n;
     }
     document.getElementById('results').innerHTML = '';
     hostnamesRnd = createRandomHostnameSample(hostnamePool, n);
+    compare();
     stdout('Benchmarking the extraction of the domain name of the following hostnames:\n');
     stdout('   ' + hostnamesRnd.join('\n   '));
     stdout('\n\nResults...\n\n');
@@ -225,38 +238,30 @@ function doBenchmark() {
 }
 
 function doTldjsBenchmark() {
-    var hostnames = hostnamesRnd;
-    var i = hostnames.length;
-    domain = new Array(i);
-    while ( i-- ) {
-        domain[i] = tldjs.getDomain(hostnames[i]);
+    domains.length = 0;;
+    for ( const hostname of hostnamesRnd ) {
+        domains.push(tldjs.getDomain(hostname));
     }
 }
 
 function doUrijsBenchmark() {
-    var hostnames = hostnamesRnd;
-    var i = hostnames.length;
-    domain = new Array(i);
-    while ( i-- ) {
-        domain[i] = urijs.hostname(hostnames[i]).domain();
+    domains.length = 0;;
+    for ( const hostname of hostnamesRnd ) {
+        domains.push(urijs.hostname(hostname).domain());
     }
 }
 
 function doPsljsV1Benchmark() {
-    var hostnames = hostnamesRnd;
-    var i = hostnames.length;
-    domain = new Array(i);
-    while ( i-- ) {
-        domain[i] = publicSuffixListV1.getDomain(hostnames[i]);
+    domains.length = 0;;
+    for ( const hostname of hostnamesRnd ) {
+        domains.push(publicSuffixListV1.getDomain(hostname));
     }
 }
 
 function doPsljsBenchmark() {
-    var hostnames = hostnamesRnd;
-    var i = hostnames.length;
-    domain = new Array(i);
-    while ( i-- ) {
-        domain[i] = publicSuffixList.getDomain(hostnames[i]);
+    domains.length = 0;;
+    for ( const hostname of hostnamesRnd ) {
+        domains.push(publicSuffixList.getDomain(hostname));
     }
 }
 
@@ -269,17 +274,20 @@ function benchmarkResultHandler(event) {
 
 benchmarkSuite = new Benchmark.Suite;
 benchmarkSuite
-    .add('github.com/oncletom/tld.js', doTldjsBenchmark)
-    .add('github.com/medialize/URI.js', doUrijsBenchmark)
-    .add('github.com/gorhill/publicsuffixlist.js V1', doPsljsV1Benchmark)
-    .add('github.com/gorhill/publicsuffixlist.js V2 (JS)', doPsljsBenchmark)
+    .add('github.com/oncletom/tld.js v2.3.1', doTldjsBenchmark)
+    .add('github.com/medialize/URI.js v1.19.1', doUrijsBenchmark)
+    .add('github.com/gorhill/publicsuffixlist.js v1', doPsljsV1Benchmark)
+    .add('github.com/gorhill/publicsuffixlist.js v2 (JS)', doPsljsBenchmark)
     .on('cycle', benchmarkCycleHandler)
     .on('complete', benchmarkResultHandler);
 
 
 fetch(
-    'https://publicsuffix.org/list/public_suffix_list.dat',
-).then(response =>
+    'public_suffix_list.dat'
+).catch(reason => {
+    console.info(reason)
+    return fetch('https://publicsuffix.org/list/public_suffix_list.dat')
+}).then(response =>
     response.text()
 ).then(text => {
     publicSuffixListV1.parse(text, punycode.toASCII);

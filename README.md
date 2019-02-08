@@ -13,14 +13,6 @@ the link to understand why such a list is needed.
 
 See [test and benchmark](https://gorhill.github.io/publicsuffixlist.js/) pages.
 
-**Warning:** the benchmark is using an older version of
-[`tld.js`](https://github.com/oncletom/tld.js). I have tried to use the latest
-version, however I can't figure how to make it run inside the browser. I
-know nothing about [Browserify](http://browserify.org/), and my attempt at
-trying to create a bundle which can be loaded in the browser was just a
-frustrating failure (I really wish things could be just plain simple for
-whoever wants to use such library in a browser environment).
-
 ## Usage
 
 
@@ -44,7 +36,7 @@ window.publicSuffixList.parse(list, punycode.toASCII);
 // normal way for hostnames": lower-case, punycode, and only a-z, 0-9, -, .
 
 let domain = window.publicSuffixList.getDomain('haha.whatisthis.global.prod.fastly.net');
-// domain = 'whatisthis.global.prod.fastly.net' (yep, who knew)
+// domain = 'whatisthis.global.prod.fastly.net'
 
 let domain = window.publicSuffixList.getDomain('police.uk');
 // domain = ''

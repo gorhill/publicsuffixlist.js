@@ -53,7 +53,7 @@
     
      Node:
      +  u8: length of char data
-     +  u8: flags (bit 0: is_publicsuffix, bit 1: is_wildcarded
+     +  u8: flags => bit 0: is_publicsuffix, bit 1: is_exception
      + u16: length of array of children
      + u32: char data or offset to char data
      + u32: offset to array of children
@@ -101,7 +101,7 @@ const parse = function(text, toAscii) {
             return 0;
         };
 
-        const addToStore = function(rule, exception) {
+        const addToTree = function(rule, exception) {
             let node = rootRule;
             let end = rule.length;
             while ( end > 0 ) {
@@ -161,7 +161,7 @@ const parse = function(text, toAscii) {
         };
 
         // 2. If no rules match, the prevailing rule is "*".
-        addToStore('*', false);
+        addToTree('*', false);
 
         const mustPunycode = /[^a-z0-9.-]/;
         const textEnd = text.length;
@@ -197,7 +197,7 @@ const parse = function(text, toAscii) {
                 line = toAscii(line.toLowerCase());
             }
 
-            addToStore(line, exception);
+            addToTree(line, exception);
         }
     }
 
@@ -395,7 +395,7 @@ const getPublicSuffix = function(hostname) {
     }
 
     let cursorPos = getPublicSuffixPos(pslBuffer32[RULES_PTR_SLOT]);
-    if ( cursorPos === hostnameLen || cursorPos === 0 ) {
+    if ( cursorPos === hostnameLen ) {
         return EMPTY_STRING;
     }
 

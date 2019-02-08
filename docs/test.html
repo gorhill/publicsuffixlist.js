@@ -43,16 +43,17 @@ function checkPublicSuffix(a, b) {
     stdout(output);
 }
 
-window.onload = function() {
-    fetch(
-        'https://publicsuffix.org/list/public_suffix_list.dat',
-    ).then(response =>
-        response.text()
-    ).then(text => {
-        publicSuffixList.parse(text, punycode.toASCII);
-        checkAll();
-    });
-};
+fetch(
+    'public_suffix_list.dat'
+).catch(reason => {
+    console.info(reason)
+    return fetch('https://publicsuffix.org/list/public_suffix_list.dat')
+}).then(response =>
+    response.text()
+).then(text => {
+    publicSuffixList.parse(text, punycode.toASCII);
+    checkAll();
+});
 </script>
 
 <script>
