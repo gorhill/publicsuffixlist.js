@@ -2,147 +2,79 @@
 
     publicsuffixlist.js - an efficient javascript implementation to deal with
     Mozilla Foundation's Public Suffix List <http://publicsuffix.org/list/>
-    Copyright (C) 2013  Raymond Hill
+
+    Copyright (C) 2013-present Raymond Hill
 
     License: pick the one which suits you:
       GPL v3 see <https://www.gnu.org/licenses/gpl.html>
       APL v2 see <http://www.apache.org/licenses/LICENSE-2.0>
+
 */
 
 /*! Home: https://github.com/gorhill/publicsuffixlist.js -- GPLv3 APLv2 */
 
-/*
-    This code is mostly dumb: I consider this to be lower-level code, thus
-    in order to ensure efficiency, the caller is responsible for sanitizing
-    the inputs.
+/* jshint browser:true, esversion:6, laxbreak:true, undef:true, unused:true */
+/* globals exports:true, module */
+
+/*******************************************************************************
+
+    Reference:
+    https://publicsuffix.org/list/
+
+    Excerpt:
+
+    > Algorithm
+    > 
+    > 1. Match domain against all rules and take note of the matching ones.
+    > 2. If no rules match, the prevailing rule is "*".
+    > 3. If more than one rule matches, the prevailing rule is the one which
+         is an exception rule.
+    > 4. If there is no matching exception rule, the prevailing rule is the
+         one with the most labels.
+    > 5. If the prevailing rule is a exception rule, modify it by removing
+         the leftmost label.
+    > 6. The public suffix is the set of labels from the domain which match
+         the labels of the prevailing rule, using the matching algorithm above.
+    > 7. The registered or registrable domain is the public suffix plus one
+         additional label.
+
 */
 
 /******************************************************************************/
 
-// A single instance of PublicSuffixList is enough.
+(function(context) {
+// >>>>>>>> start of anonymous namespace
 
-;(function(root) {
+'use strict';
 
-/******************************************************************************/
+/*******************************************************************************
 
-var exceptions = {};
-var rules = {};
-var selfieMagic = 'iscjsfsaolnm';
+    Tree encoding in array buffer:
+    
+     Node:
+     +  u8: length of char data
+     +  u8: flags (bit 0: is_publicsuffix, bit 1: is_wildcarded
+     + u16: length of array of children
+     + u32: char data or offset to char data
+     + u32: offset to array of children
+     = 12 bytes
 
-// This value dictate how the search will be performed:
-//    < this.cutoffLength = indexOf()
-//   >= this.cutoffLength = binary search
-var cutoffLength = 480;
-var mustPunycode = /[^a-z0-9.-]/;
+    More bits in flags could be used; for example:
+    - to distinguish private suffixes
 
-/******************************************************************************/
+*/
 
-// In the context of this code, a domain is defined as:
-//   "{label}.{public suffix}".
-// A single standalone label is a public suffix as per
-// http://publicsuffix.org/list/:
-//   "If no rules match, the prevailing rule is '*' "
-// This means 'localhost' is not deemed a domain by this
-// code, since according to the definition above, it would be
-// evaluated as a public suffix. The caller is therefore responsible to
-// decide how to further interpret such public suffix.
-//
-// `hostname` must be a valid ascii-based hostname.
+                                    // i32 /  i8
+const HOSTNAME_SLOT       = 0;      // jshint ignore:line
+const HOSTNAME_LEN_SLOT   = 255;    //  -- / 255
+const RULES_PTR_SLOT      = 64;     //  64 / 256
+const CHARDATA_PTR_SLOT   = 65;     //  65 / 260
+const EMPTY_STRING        = '';
+const SELFIE_MAGIC        = 1;
 
-function getDomain(hostname) {
-    // A hostname starting with a dot is not a valid hostname.
-    if ( !hostname || hostname.charAt(0) === '.' ) {
-        return '';
-    }
-    hostname = hostname.toLowerCase();
-    var suffix = getPublicSuffix(hostname);
-    if ( suffix === hostname ) {
-        return '';
-    }
-    var pos = hostname.lastIndexOf('.', hostname.lastIndexOf('.', hostname.length - suffix.length) - 1);
-    if ( pos <= 0 ) {
-        return hostname;
-    }
-    return hostname.slice(pos + 1);
-}
-
-/******************************************************************************/
-
-// Return longest public suffix.
-//
-// `hostname` must be a valid ascii-based string which respect hostname naming.
-
-function getPublicSuffix(hostname) {
-    if ( !hostname ) {
-        return '';
-    }
-    // Since we slice down the hostname with each pass, the first match
-    // is the longest, so no need to find all the matching rules.
-    var pos;
-    while ( true ) {
-        pos = hostname.indexOf('.');
-        if ( pos < 0 ) {
-            return hostname;
-        }
-        if ( search(exceptions, hostname) ) {
-            return hostname.slice(pos + 1);
-        }
-        if ( search(rules, hostname) ) {
-            return hostname;
-        }
-        if ( search(rules, '*' + hostname.slice(pos)) ) {
-            return hostname;
-        }
-        hostname = hostname.slice(pos + 1);
-    }
-    // unreachable
-}
-
-/******************************************************************************/
-
-// Look up a specific hostname.
-
-function search(store, hostname) {
-    // Extract TLD
-    var pos = hostname.lastIndexOf('.');
-    var tld, remainder;
-    if ( pos < 0 ) {
-        tld = hostname;
-        remainder = hostname;
-    } else {
-        tld = hostname.slice(pos + 1);
-        remainder = hostname.slice(0, pos);
-    }
-    var substore = store[tld];
-    if ( !substore ) {
-        return false;
-    }
-    // If substore is a string, use indexOf()
-    if ( typeof substore === 'string' ) {
-        return substore.indexOf(' ' + remainder + ' ') >= 0;
-    }
-    // It is an array: use binary search.
-    var l = remainder.length;
-    var haystack = substore[l];
-    if ( !haystack ) {
-        return false;
-    }
-    var left = 0;
-    var right = Math.floor(haystack.length / l + 0.5);
-    var i, needle;
-    while ( left < right ) {
-        i = left + right >> 1;
-        needle = haystack.substr( l * i, l );
-        if ( remainder < needle ) {
-            right = i;
-        } else if ( remainder > needle ) {
-            left = i + 1;
-        } else {
-            return true;
-        }
-    }
-    return false;
-}
+let pslBuffer32;
+let pslBuffer8;
+let hostnameArg = EMPTY_STRING;
 
 /******************************************************************************/
 
@@ -151,172 +83,417 @@ function search(store, hostname) {
 //
 // `toAscii` is a converter from unicode to punycode. Required since the
 // Public Suffix List contains unicode characters.
-// Suggestion: use <https://github.com/bestiejs/punycode.js> it's quite good.
+// Suggestion: use <https://github.com/bestiejs/punycode.js>
 
-function parse(text, toAscii) {
-    exceptions = {};
-    rules = {};
+const parse = function(text, toAscii) {
+    const rootRule = { label: EMPTY_STRING, flags: 0, children: undefined };
 
-    // http://publicsuffix.org/list/:
-    // "... all rules must be canonicalized in the normal way
-    // for hostnames - lower-case, Punycode ..."
-    text = text.toLowerCase();
-
-    var lineBeg = 0, lineEnd;
-    var textEnd = text.length;
-    var line, store, pos, tld;
-
-    while ( lineBeg < textEnd ) {
-        lineEnd = text.indexOf('\n', lineBeg);
-        if ( lineEnd < 0 ) {
-            lineEnd = text.indexOf('\r', lineBeg);
-            if ( lineEnd < 0 ) {
-                lineEnd = textEnd;
+    // Tree building
+    {
+        const compareLabels = function(a, b) {
+            let n = a.length;
+            let d = n - b.length;
+            if ( d !== 0 ) { return d; }
+            for ( let i = 0; i < n; i++ ) {
+                d = a.charCodeAt(i) - b.charCodeAt(i);
+                if ( d !== 0 ) { return d; }
             }
-        }
-        line = text.slice(lineBeg, lineEnd).trim();
-        lineBeg = lineEnd + 1;
+            return 0;
+        };
 
-        if ( line.length === 0 ) {
-            continue;
-        }
+        const addToStore = function(rule, exception) {
+            let node = rootRule;
+            let end = rule.length;
+            while ( end > 0 ) {
+                const beg = rule.lastIndexOf('.', end - 1);
+                const label = rule.slice(beg + 1, end);
+                end = beg;
 
-        // Ignore comments
-        pos = line.indexOf('//');
-        if ( pos >= 0 ) {
-            line = line.slice(0, pos);
-        }
+                if ( Array.isArray(node.children) === false ) {
+                    const child = { label, flags: 0, children: undefined };
+                    node.children = [ child ];
+                    node = child;
+                    continue;
+                }
 
-        // Ignore surrounding whitespaces
-        line = line.trim();
-        if ( !line ) {
-            continue;
-        }
+                let left = 0;
+                let right = node.children.length;
+                while ( left < right ) {
+                    const i = left + right >>> 1;
+                    const d = compareLabels(label, node.children[i].label);
+                    if ( d < 0 ) {
+                        right = i;
+                        if ( right === left ) {
+                            const child = {
+                                label,
+                                flags: 0,
+                                children: undefined
+                            };
+                            node.children.splice(left, 0, child);
+                            node = child;
+                            break;
+                        }
+                        continue;
+                    }
+                    if ( d > 0 ) {
+                        left = i + 1;
+                        if ( left === right ) {
+                            const child = {
+                                label,
+                                flags: 0,
+                                children: undefined
+                            };
+                            node.children.splice(right, 0, child);
+                            node = child;
+                            break;
+                        }
+                        continue;
+                    }
+                    /* d === 0 */
+                    node = node.children[i];
+                    break;
+                }
+            }
+            node.flags |= 0b01;
+            if ( exception ) {
+                node.flags |= 0b10;
+            }
+        };
 
-        if ( mustPunycode.test(line) ) {
-            line = toAscii(line);
-        }
+        // 2. If no rules match, the prevailing rule is "*".
+        addToStore('*', false);
 
-        // Is this an exception rule?
-        if ( line.charAt(0) === '!' ) {
-            store = exceptions;
-            line = line.slice(1);
-        } else {
-            store = rules;
-        }
+        const mustPunycode = /[^a-z0-9.-]/;
+        const textEnd = text.length;
+        let lineBeg = 0;
 
-        // Extract TLD
-        pos = line.lastIndexOf('.');
-        if ( pos < 0 ) {
-            tld = line;
-        } else {
-            tld = line.slice(pos + 1);
-            line = line.slice(0, pos);
-        }
+        while ( lineBeg < textEnd ) {
+            let lineEnd = text.indexOf('\n', lineBeg);
+            if ( lineEnd === -1 ) {
+                lineEnd = text.indexOf('\r', lineBeg);
+                if ( lineEnd === -1 ) {
+                    lineEnd = textEnd;
+                }
+            }
+            let line = text.slice(lineBeg, lineEnd).trim();
+            lineBeg = lineEnd + 1;
 
-        // Store suffix using tld as key
-        if ( !store.hasOwnProperty(tld) ) {
-            store[tld] = [];
-        }
-        if ( line ) {
-            store[tld].push(line);
+            // Ignore comments
+            const pos = line.indexOf('//');
+            if ( pos !== -1 ) {
+                line = line.slice(0, pos);
+            }
+
+            // Ignore surrounding whitespaces
+            line = line.trim();
+            if ( line.length === 0 ) { continue; }
+
+            const exception = line.charCodeAt(0) === 0x21 /* '!' */;
+            if ( exception ) {
+                line = line.slice(1);
+            }
+
+            if ( mustPunycode.test(line) ) {
+                line = toAscii(line.toLowerCase());
+            }
+
+            addToStore(line, exception);
         }
     }
-    crystallize(exceptions);
-    crystallize(rules);
-}
 
-/******************************************************************************/
+    {
+        const labelToOffsetMap = new Map();
+        const treeData = [];
+        const charData = [];
 
-// Cristallize the storage of suffixes using optimal internal representation
-// for future look up.
-
-function crystallize(store) {
-    var suffixes, suffix, i, l;
-
-    for ( var tld in store ) {
-        if ( !store.hasOwnProperty(tld) ) {
-            continue;
-        }
-        suffixes = store[tld].join(' ');
-        // No suffix
-        if ( !suffixes ) {
-            store[tld] = '';
-            continue;
-        }
-        // Concatenated list of suffixes less than cutoff length:
-        //   Store as string, lookup using indexOf()
-        if ( suffixes.length < cutoffLength ) {
-            store[tld] = ' ' + suffixes + ' ';
-            continue;
-        }
-        // Concatenated list of suffixes greater or equal to cutoff length
-        //   Store as array keyed on suffix length, lookup using binary search.
-        // I borrowed the idea to key on string length here:
-        //   http://ejohn.org/blog/dictionary-lookups-in-javascript/#comment-392072
-
-        i = store[tld].length;
-        suffixes = [];
-        while ( i-- ) {
-            suffix = store[tld][i];
-            l = suffix.length;
-            if ( !suffixes[l] ) {
-                suffixes[l] = [];
+        const allocate = function(n) {
+            const ibuf = treeData.length;
+            for ( let i = 0; i < n; i++ ) {
+                treeData.push(0);
             }
-            suffixes[l].push(suffix);
-        }
-        l = suffixes.length;
-        while ( l-- ) {
-            if ( suffixes[l] ) {
-                suffixes[l] = suffixes[l].sort().join('');
+            return ibuf;
+        };
+
+        const storeNode = function(ibuf, node) {
+            const nChars = node.label.length;
+            const nChildren = node.children !== undefined
+                ? node.children.length
+                : 0;
+            treeData[ibuf+0] = nChars << 24 | node.flags << 16 | nChildren;
+            // char data
+            if ( nChars <= 4 ) {
+                let v = 0;
+                if ( nChars > 0 ) {
+                    v |= node.label.charCodeAt(0);
+                    if ( nChars > 1 ) {
+                        v |= node.label.charCodeAt(1) << 8;
+                        if ( nChars > 2 ) {
+                            v |= node.label.charCodeAt(2) << 16;
+                            if ( nChars > 3 ) {
+                                v |= node.label.charCodeAt(3) << 24;
+                            }
+                        }
+                    }
+                }
+                treeData[ibuf+1] = v;
+            } else {
+                let offset = labelToOffsetMap.get(node.label);
+                if ( offset === undefined ) {
+                    offset = charData.length;
+                    for ( let i = 0; i < nChars; i++ ) {
+                        charData.push(node.label.charCodeAt(i));
+                    }
+                    labelToOffsetMap.set(node.label, offset);
+                }
+                treeData[ibuf+1] = offset;
             }
-        }
-        store[tld] = suffixes;
+            // child nodes
+            if ( Array.isArray(node.children) === false ) {
+                treeData[ibuf+2] = 0;
+                return;
+            }
+            
+            const iarray = allocate(nChildren * 3);
+            treeData[ibuf+2] = iarray;
+            for ( let i = 0; i < nChildren; i++ ) {
+                storeNode(iarray + i * 3, node.children[i]);
+            }
+        };
+
+        // First 512 bytes are reserved for internal use
+        allocate(512 >> 2);
+
+        const iRootRule = allocate(3);
+        storeNode(iRootRule, rootRule);
+        treeData[RULES_PTR_SLOT] = iRootRule;
+
+        const iCharData = treeData.length << 2;
+        treeData[CHARDATA_PTR_SLOT] = iCharData;
+
+        const byteLength = (treeData.length << 2) + (charData.length + 3 & ~3);
+        const arrayBuffer = new ArrayBuffer(byteLength);
+
+        pslBuffer32 = new Uint32Array(arrayBuffer);
+        pslBuffer32.set(treeData);
+
+        pslBuffer8 = new Uint8Array(arrayBuffer);
+        pslBuffer8.set(charData, treeData.length << 2);
     }
-    return store;
-}
 
-/******************************************************************************/
-
-function toSelfie() {
-    return {
-        magic: selfieMagic,
-        rules: rules,
-        exceptions: exceptions
-    };
-}
-
-function fromSelfie(selfie) {
-    if ( typeof selfie !== 'object' || typeof selfie.magic !== 'string' || selfie.magic !== selfieMagic ) {
-        return false;
-    }
-    rules = selfie.rules;
-    exceptions = selfie.exceptions;
-    return true;
-}
-
-/******************************************************************************/
-
-// Public API
-
-root = root || window;
-
-root.publicSuffixList = {
-    'version': '1.0',
-    'parse': parse,
-    'getDomain': getDomain,
-    'getPublicSuffix': getPublicSuffix,
-    'toSelfie': toSelfie,
-    'fromSelfie': fromSelfie
+    window.dispatchEvent(new CustomEvent('publicSuffixListChanged'));
 };
 
-if ( typeof module !== "undefined" ) { 
-    module.exports = root.publicSuffixList;
-} else if ( typeof exports !== "undefined" ) {
-    exports = root.publicSuffixList;
+/******************************************************************************/
+
+const setHostnameArg = function(hostname) {
+    if ( hostname === hostnameArg ) { return; }
+    const buf = pslBuffer8;
+    if ( typeof hostname !== 'string' || hostname.length === 0 ) {
+        return (buf[HOSTNAME_LEN_SLOT] = 0);
+    }
+    hostname = hostname.toLowerCase();
+    hostnameArg = hostname;
+    let n = hostname.length;
+    if ( n > 254 ) { n = 254; }
+    buf[HOSTNAME_LEN_SLOT] = n;
+    let i = n;
+    while ( i-- ) {
+        buf[i] = hostname.charCodeAt(i);
+    }
+    return n;
+};
+
+/******************************************************************************/
+
+// WASM-able, because no information outside the buffer content is required.
+
+const getPublicSuffixPos = function(iRoot) {
+    const buf8 = pslBuffer8;
+    const buf32 = pslBuffer32;
+
+    let iNode = iRoot;
+    let cursorPos = buf8[HOSTNAME_LEN_SLOT];
+    let labelBeg = cursorPos;
+
+    // Label-lookup loop
+    for (;;) {
+        // Extract label indices
+        // TODO: remember/reuse these when encoding hostname
+        const labelEnd = labelBeg;
+        while ( buf8[labelBeg-1] !== 0x2E /* '.' */ ) {
+            labelBeg -= 1;
+            if ( labelBeg === 0 ) { break; }
+        }
+        const labelLen = labelEnd - labelBeg;
+        // Match-lookup loop: binary search
+        const nCandidates = buf32[iNode+0] & 0x0000FFFF;
+        if ( nCandidates === 0 ) { break; }
+        const iCandidates = buf32[iNode+2];
+        let l = 0;
+        let r = nCandidates;
+        let iFound = 0;
+        while ( l < r ) {
+            const iCandidate = l + r >>> 1;
+            const iCandidateNode = iCandidates + iCandidate * 3;
+            const candidateLen = buf32[iCandidateNode+0] >>> 24;
+            let d = labelLen - candidateLen;
+            if ( d === 0 ) {
+                const iCandidateChar = candidateLen <= 4
+                    ? iCandidateNode + 1 << 2
+                    : buf32[CHARDATA_PTR_SLOT] + buf32[iCandidateNode+1];
+                for ( let i = 0; i < labelLen; i++ ) {
+                    d = buf8[labelBeg+i] - buf8[iCandidateChar+i];
+                    if ( d !== 0 ) { break; }
+                }
+            }
+            if ( d < 0 ) {
+                r = iCandidate;
+            } else if ( d > 0 ) {
+                l = iCandidate + 1;
+            } else /* if ( d === 0 ) */ {
+                iFound = iCandidateNode;
+                break;
+            }
+        }
+        // 2. If no rules match, the prevailing rule is "*".
+        if ( iFound === 0 ) {
+            if ( buf8[iCandidates + 1 << 2] !== 0x2A /* '*' */ ) { break; }
+            iFound = iCandidates;
+        }
+        iNode = iFound;
+        // 5. If the prevailing rule is a exception rule, modify it by
+        //    removing the leftmost label.
+        if ( (buf32[iNode+0] & 0x00020000) !== 0 ) {
+            for (;;) {
+                if ( labelBeg === cursorPos ) { break; }
+                if ( buf8[labelBeg] === 0x2E /* '.' */ ) {
+                    return labelBeg + 1;
+                }
+                labelBeg += 1;
+            }
+            break;
+        }
+        if ( (buf32[iNode+0] & 0x00010000) !== 0 ) {
+            cursorPos = labelBeg;
+        }
+        if ( labelBeg === 0 ) { break; }
+        labelBeg -= 1; // skip dot
+    }
+
+    return cursorPos;
+};
+
+/******************************************************************************/
+
+const getPublicSuffix = function(hostname) {
+    if ( pslBuffer32 === undefined ) { return EMPTY_STRING; }
+
+    const hostnameLen = setHostnameArg(hostname);
+    const buf8 = pslBuffer8;
+    if ( hostnameLen === 0 || buf8[0] === 0x2E /* '.' */ ) {
+        return EMPTY_STRING;
+    }
+
+    let cursorPos = getPublicSuffixPos(pslBuffer32[RULES_PTR_SLOT]);
+    if ( cursorPos === hostnameLen || cursorPos === 0 ) {
+        return EMPTY_STRING;
+    }
+
+    return cursorPos === 0 ? hostnameArg : hostnameArg.slice(cursorPos);
+};
+
+/******************************************************************************/
+
+const getDomain = function(hostname) {
+    if ( pslBuffer32 === undefined ) { return EMPTY_STRING; }
+
+    const hostnameLen = setHostnameArg(hostname);
+    const buf8 = pslBuffer8;
+    if ( hostnameLen === 0 || buf8[0] === 0x2E /* '.' */ ) {
+        return EMPTY_STRING;
+    }
+
+    let cursorPos = getPublicSuffixPos(pslBuffer32[RULES_PTR_SLOT]);
+    if ( cursorPos === hostnameLen || cursorPos === 0 ) {
+        return EMPTY_STRING;
+    }
+
+    // 7. The registered or registrable domain is the public suffix plus one
+    //    additional label.
+    cursorPos -= 1; // skip dot
+    while ( buf8[cursorPos-1] !== 0x2E /* '.' */ ) {
+        cursorPos -= 1;
+        if ( cursorPos === 0 ) { break; }
+    }
+
+    return cursorPos === 0 ? hostnameArg : hostnameArg.slice(cursorPos);
+};
+
+/******************************************************************************/
+
+const toSelfie = function() {
+    const selfie = {
+        magic: SELFIE_MAGIC,
+        buffer: pslBuffer32 !== undefined
+            ? Array.from(pslBuffer32)
+            : null,
+    };
+    return selfie;
+};
+
+const fromSelfie = function(selfie) {
+    if (
+        selfie instanceof Object === false ||
+        selfie.magic !== SELFIE_MAGIC ||
+        Array.isArray(selfie.buffer) === false
+    ) {
+        return false;
+    }
+    if (
+        pslBuffer32 !== undefined &&
+        pslBuffer32.length < selfie.buffer.length
+    ) {
+        pslBuffer32 = undefined;
+        pslBuffer8 = undefined;
+    }
+    if ( pslBuffer32 === undefined ) {
+        pslBuffer32 = new Uint32Array(selfie.buffer.length);
+        pslBuffer8 = new Uint8Array(pslBuffer32.buffer);
+    }
+    pslBuffer32.set(selfie.buffer);
+    hostnameArg = ''; // Important!
+    return true;
+};
+
+/******************************************************************************/
+
+// TODO: load WASM module here (optional)
+
+/******************************************************************************/
+
+context = context || window;
+
+// Keep v1 around if it is present -- for benchmark purpose only.
+if ( context.publicSuffixList !== undefined ) {
+    context.publicSuffixListV1 = context.publicSuffixList;
+}
+
+context.publicSuffixList = {
+    version: '2.0',
+    parse,
+    getDomain,
+    getPublicSuffix,
+    toSelfie,
+    fromSelfie
+};
+
+if ( typeof module !== 'undefined' ) { 
+    module.exports = context.publicSuffixList;
+} else if ( typeof exports !== 'undefined' ) {
+    exports = context.publicSuffixList;
 }
 
 /******************************************************************************/
 
+// <<<<<<<< end of anonymous namespace
 })(this);
-
