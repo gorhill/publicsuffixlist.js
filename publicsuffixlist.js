@@ -66,15 +66,27 @@
 
                                     // i32 /  i8
 const HOSTNAME_SLOT       = 0;      // jshint ignore:line
-const HOSTNAME_LEN_SLOT   = 255;    //  -- / 255
-const RULES_PTR_SLOT      = 64;     //  64 / 256
-const CHARDATA_PTR_SLOT   = 65;     //  65 / 260
+const LABEL_INDICES_SLOT  = 256;    //  -- / 256
+const RULES_PTR_SLOT      = 100;    // 100 / 400
+const CHARDATA_PTR_SLOT   = 101;    // 101 / 404
 const EMPTY_STRING        = '';
-const SELFIE_MAGIC        = 1;
+const SELFIE_MAGIC        = 2;
 
 let pslBuffer32;
 let pslBuffer8;
 let hostnameArg = EMPTY_STRING;
+
+/******************************************************************************/
+
+const fireChangedEvent = function() {
+    if (
+        window instanceof Object &&
+        window.dispatchEvent instanceof Function &&
+        window.CustomEvent instanceof Function
+    ) {
+        window.dispatchEvent(new CustomEvent('publicSuffixListChanged'));
+    }
+};
 
 /******************************************************************************/
 
@@ -280,51 +292,58 @@ const parse = function(text, toAscii) {
         pslBuffer8.set(charData, treeData.length << 2);
     }
 
-    window.dispatchEvent(new CustomEvent('publicSuffixListChanged'));
+    fireChangedEvent();
 };
 
 /******************************************************************************/
 
 const setHostnameArg = function(hostname) {
-    if ( hostname === hostnameArg ) { return; }
     const buf = pslBuffer8;
-    if ( typeof hostname !== 'string' || hostname.length === 0 ) {
-        return (buf[HOSTNAME_LEN_SLOT] = 0);
+    if ( hostname === hostnameArg ) { return buf[LABEL_INDICES_SLOT]; }
+    if ( hostname === null || hostname.length === 0 ) {
+        return (buf[LABEL_INDICES_SLOT] = 0);
     }
     hostname = hostname.toLowerCase();
     hostnameArg = hostname;
     let n = hostname.length;
-    if ( n > 254 ) { n = 254; }
-    buf[HOSTNAME_LEN_SLOT] = n;
+    if ( n > 255 ) { n = 255; }
+    buf[LABEL_INDICES_SLOT] = n;
     let i = n;
+    let j = LABEL_INDICES_SLOT + 1;
     while ( i-- ) {
-        buf[i] = hostname.charCodeAt(i);
+        const c = hostname.charCodeAt(i);
+        if ( c === 0x2E /* '.' */ ) {
+            buf[j+0] = i + 1;
+            buf[j+1] = i;
+            j += 2;
+        }
+        buf[i] = c;
     }
+    buf[j] = 0;
     return n;
 };
 
 /******************************************************************************/
 
+// Returns an offset to the start of the public suffix.
+//
 // WASM-able, because no information outside the buffer content is required.
 
-const getPublicSuffixPos = function(iRoot) {
+const getPublicSuffixPos = function() {
     const buf8 = pslBuffer8;
     const buf32 = pslBuffer32;
+    const iCharData = buf32[CHARDATA_PTR_SLOT];
 
-    let iNode = iRoot;
-    let cursorPos = buf8[HOSTNAME_LEN_SLOT];
-    let labelBeg = cursorPos;
+    let iNode = pslBuffer32[RULES_PTR_SLOT];
+    let cursorPos = buf8[LABEL_INDICES_SLOT];
+    let iLabel = LABEL_INDICES_SLOT;
 
     // Label-lookup loop
     for (;;) {
         // Extract label indices
-        // TODO: remember/reuse these when encoding hostname
-        const labelEnd = labelBeg;
-        while ( buf8[labelBeg-1] !== 0x2E /* '.' */ ) {
-            labelBeg -= 1;
-            if ( labelBeg === 0 ) { break; }
-        }
-        const labelLen = labelEnd - labelBeg;
+        let labelBeg = buf8[iLabel+1];
+        const labelLen = buf8[iLabel+0] - labelBeg;
+        iLabel += 2;
         // Match-lookup loop: binary search
         const nCandidates = buf32[iNode+0] & 0x0000FFFF;
         if ( nCandidates === 0 ) { break; }
@@ -340,7 +359,7 @@ const getPublicSuffixPos = function(iRoot) {
             if ( d === 0 ) {
                 const iCandidateChar = candidateLen <= 4
                     ? iCandidateNode + 1 << 2
-                    : buf32[CHARDATA_PTR_SLOT] + buf32[iCandidateNode+1];
+                    : iCharData + buf32[iCandidateNode+1];
                 for ( let i = 0; i < labelLen; i++ ) {
                     d = buf8[labelBeg+i] - buf8[iCandidateChar+i];
                     if ( d !== 0 ) { break; }
@@ -377,7 +396,6 @@ const getPublicSuffixPos = function(iRoot) {
             cursorPos = labelBeg;
         }
         if ( labelBeg === 0 ) { break; }
-        labelBeg -= 1; // skip dot
     }
 
     return cursorPos;
@@ -394,7 +412,7 @@ const getPublicSuffix = function(hostname) {
         return EMPTY_STRING;
     }
 
-    let cursorPos = getPublicSuffixPos(pslBuffer32[RULES_PTR_SLOT]);
+    let cursorPos = getPublicSuffixPos();
     if ( cursorPos === hostnameLen ) {
         return EMPTY_STRING;
     }
@@ -413,7 +431,7 @@ const getDomain = function(hostname) {
         return EMPTY_STRING;
     }
 
-    let cursorPos = getPublicSuffixPos(pslBuffer32[RULES_PTR_SLOT]);
+    let cursorPos = getPublicSuffixPos();
     if ( cursorPos === hostnameLen || cursorPos === 0 ) {
         return EMPTY_STRING;
     }
@@ -461,7 +479,13 @@ const fromSelfie = function(selfie) {
         pslBuffer8 = new Uint8Array(pslBuffer32.buffer);
     }
     pslBuffer32.set(selfie.buffer);
-    hostnameArg = ''; // Important!
+
+    // Important!
+    hostnameArg = '';
+    pslBuffer8[LABEL_INDICES_SLOT] = 0;
+
+    fireChangedEvent();
+
     return true;
 };
 
