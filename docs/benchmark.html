@@ -16,19 +16,24 @@
 <!-- https://www.jsdelivr.com/package/npm/tldjs -->
 <script src="https://cdn.jsdelivr.net/npm/tldjs@2.3.1/tld.min.js"></script>
 
+<!-- https://www.jsdelivr.com/package/npm/tldts -->
+<script src="https://cdn.jsdelivr.net/npm/tldts@4.0.2/dist/tldts.umd.min.js"></script>
+
 <script src="uri.min.js"></script>
 <script src="punycode.min.js"></script>
-<!-- v1 --><script src="https://rawcdn.githack.com/gorhill/publicsuffixlist.js/f76f6bcdb7dcc951fa8e8739527fa3340469401e/publicsuffixlist.min.js"></script>
-<!-- v2 --><script src="https://raw.githack.com/gorhill/publicsuffixlist.js/master/publicsuffixlist.js"></script>
 <script>
+const pslV1URL = 'https://rawcdn.githack.com/gorhill/publicsuffixlist.js/f76f6bcdb7dcc951fa8e8739527fa3340469401e/publicsuffixlist.min.js';
+const pslV2URL = 'https://raw.githack.com/gorhill/publicsuffixlist.js/master/publicsuffixlist.min.js';
+const pslInstances = {};
+
 const urijs = new URI();
 
 // I got this list from:
 //   https://github.com/medialize/URI.js/blob/gh-pages/src/SecondLevelDomains.js
 // Its sole purpose here is to be able to create a sample of hostnames which
 // can be used for benchmarking.
-var hostnamePool = (function(){
-    var list = {
+const hostnamePool = (function(){
+    const list = {
         "ac":" com gov mil net org ",
         "ae":" ac co gov mil name net org pro sch ",
         "af":" com edu gov net org ",
@@ -164,21 +169,25 @@ var hostnamePool = (function(){
         "zm":" ac co com edu gov net org sch "
     };
 
+    const createRandomLabel = function(l) {
+        return Math.random().toString(36).slice(2).slice(0,l);
+    };
+
     // Build a pool of hostnames
-    var hostnames = [];
-    var slds, i, sld;
-    for ( var tld in list ) {
-        if ( list.hasOwnProperty(tld) ) {
-            slds = list[tld].split(/\s+/);
-            i = slds.length;
-            while ( i-- ) {
-                sld = slds[i].trim();
-                if ( !sld ) {
-                    continue;
-                }
-                hostnames.push(sld + '.' + tld);
-                hostnames.push('www' + '.' + sld + '.' + tld);
-            }
+    const hostnames = [];
+    for ( const tld in list ) {
+        if ( list.hasOwnProperty(tld) === false ) { continue; }
+        const slds = list[tld].trim().split(/\s+/);
+        let i = slds.length;
+        while ( i-- ) {
+            const sld = slds[i].trim();
+            if ( !sld ) { continue; }
+            let hn = `${sld}.${tld}`;
+            hostnames.push(hn);
+            hn = `${createRandomLabel(3)}.${hn}`;
+            hostnames.push(hn);
+            hn = `${createRandomLabel(8)}.${hn}`;
+            hostnames.push(hn);
         }
     }
     return hostnames;
@@ -215,10 +224,12 @@ function stdout(text) {
 function compare() {
     for ( const hostname of hostnamesRnd ) {
         console.log(`${hostname}:`);
-        console.log(`\ttldjs: ${tldjs.getDomain(hostname)}`);
         console.log(`\turijs: ${urijs.hostname(hostname).domain()}`);
-        console.log(`\tpslv1: ${publicSuffixListV1.getDomain(hostname)}`);
-        console.log(`\tpslv2: ${publicSuffixList.getDomain(hostname)}`);
+        console.log(`\ttldjs: ${tldjs.getDomain(hostname)}`);
+        console.log(`\ttldts: ${tldts.getDomain(hostname)}`);
+        console.log(`\tpslv1: ${pslInstances.v1.getDomain(hostname)}`);
+        console.log(`\tpsl(js)v2: ${pslInstances.v2JS.getDomain(hostname)}`);
+        console.log(`\tpsl(wasm)v2: ${pslInstances.v2WASM.getDomain(hostname)}`);
     }
 }
 
@@ -237,31 +248,51 @@ function doBenchmark() {
     benchmarkSuite.run({ 'async': true });
 }
 
-function doTldjsBenchmark() {
+function doUrijsBenchmark() {
+    const psl = urijs;
     domains.length = 0;;
     for ( const hostname of hostnamesRnd ) {
-        domains.push(tldjs.getDomain(hostname));
+        domains.push(psl.hostname(hostname).domain());
     }
 }
 
-function doUrijsBenchmark() {
+function doTldjsBenchmark() {
+    const psl = tldjs;
     domains.length = 0;;
     for ( const hostname of hostnamesRnd ) {
-        domains.push(urijs.hostname(hostname).domain());
+        domains.push(psl.getDomain(hostname));
+    }
+}
+
+function doTldtsBenchmark() {
+    const psl = tldts;
+    domains.length = 0;;
+    for ( const hostname of hostnamesRnd ) {
+        domains.push(psl.getDomain(hostname));
     }
 }
 
 function doPsljsV1Benchmark() {
+    const psl = pslInstances.v1;
     domains.length = 0;;
     for ( const hostname of hostnamesRnd ) {
-        domains.push(publicSuffixListV1.getDomain(hostname));
+        domains.push(psl.getDomain(hostname));
     }
 }
 
-function doPsljsBenchmark() {
-    domains.length = 0;;
+function doPslV2JSBenchmark() {
+    const psl = pslInstances.v2JS;
+    domains.length = 0;
     for ( const hostname of hostnamesRnd ) {
-        domains.push(publicSuffixList.getDomain(hostname));
+        domains.push(psl.getDomain(hostname));
+    }
+}
+
+function doPslV2WASMBenchmark() {
+    const psl = pslInstances.v2WASM;
+    domains.length = 0;
+    for ( const hostname of hostnamesRnd ) {
+        domains.push(psl.getDomain(hostname));
     }
 }
 
@@ -270,17 +301,34 @@ function benchmarkCycleHandler(event) {
 }
 
 function benchmarkResultHandler(event) {
+    stdout('\nDone.\n');
 }
+
 
 benchmarkSuite = new Benchmark.Suite;
 benchmarkSuite
-    .add('github.com/oncletom/tld.js v2.3.1', doTldjsBenchmark)
     .add('github.com/medialize/URI.js v1.19.1', doUrijsBenchmark)
-    .add('github.com/gorhill/publicsuffixlist.js v1', doPsljsV1Benchmark)
-    .add('github.com/gorhill/publicsuffixlist.js v2 (JS)', doPsljsBenchmark)
+    .add('github.com/oncletom/tld.js v2.3.1', doTldjsBenchmark)
+    .add('github.com/remusao/tldts v4.0.2', doTldtsBenchmark)
     .on('cycle', benchmarkCycleHandler)
     .on('complete', benchmarkResultHandler);
 
+
+const loadPSLScript = function(url, name) {
+    return new Promise(resolve => {
+        const script = document.createElement('script');
+        script.src = url;
+        script.onload = script.onerror = function() {
+            if ( publicSuffixList instanceof Object === false ) {
+                return resolve(false);
+            }
+            pslInstances[name] = publicSuffixList;
+            publicSuffixList = undefined;
+            resolve(true);
+        };
+        document.head.append(script);
+    });
+};
 
 fetch(
     'public_suffix_list.dat'
@@ -289,13 +337,41 @@ fetch(
     return fetch('https://publicsuffix.org/list/public_suffix_list.dat')
 }).then(response =>
     response.text()
-).then(text => {
-    publicSuffixListV1.parse(text, punycode.toASCII);
-    publicSuffixList.parse(text, punycode.toASCII);
-    document.getElementById('runBenchmark').onclick = function() {
-        doBenchmark();
-    };
-});
+).then(text =>
+    loadPSLScript(pslV1URL, 'v1').then(status => {
+        if ( status !== true ) { return false; }
+        pslInstances.v1.parse(text, punycode.toASCII);
+        benchmarkSuite.add(
+            'github.com/gorhill/publicsuffixlist.js v1',
+            doPsljsV1Benchmark
+        );
+    }).then(( ) =>
+        loadPSLScript(pslV2URL, 'v2JS').then(status => {
+            if ( status !== true ) { return; }
+            pslInstances.v2JS.parse(text, punycode.toASCII);
+            benchmarkSuite.add(
+                'github.com/gorhill/publicsuffixlist.js v2 (JS)',
+                doPslV2JSBenchmark
+            );
+        })
+    ).then(( ) =>
+        loadPSLScript(pslV2URL, 'v2WASM').then(status => {
+            if ( status !== true ) { return; }
+            pslInstances.v2WASM.parse(text, punycode.toASCII);
+            pslInstances.v2WASM.enableWASM().then(status => {
+                if ( status !== true ) { return; }
+                benchmarkSuite.add(
+                    'github.com/gorhill/publicsuffixlist.js v2 (WASM)',
+                    doPslV2WASMBenchmark
+                );
+            });
+        })
+    ).then(( ) => {
+        document.getElementById('runBenchmark').onclick = function() {
+            doBenchmark();
+        };
+    })
+);
 </script>
 </body>
 </html>

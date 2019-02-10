@@ -14,7 +14,7 @@
 /*! Home: https://github.com/gorhill/publicsuffixlist.js -- GPLv3 APLv2 */
 
 /* jshint browser:true, esversion:6, laxbreak:true, undef:true, unused:true */
-/* globals exports:true, module */
+/* globals WebAssembly, console, exports:true, module */
 
 /*******************************************************************************
 
@@ -52,9 +52,9 @@
     Tree encoding in array buffer:
     
      Node:
-     +  u8: length of char data
-     +  u8: flags => bit 0: is_publicsuffix, bit 1: is_exception
      + u16: length of array of children
+     +  u8: flags => bit 0: is_publicsuffix, bit 1: is_exception
+     +  u8: length of char data
      + u32: char data or offset to char data
      + u32: offset to array of children
      = 12 bytes
@@ -72,8 +72,10 @@ const CHARDATA_PTR_SLOT   = 101;    // 101 / 404
 const EMPTY_STRING        = '';
 const SELFIE_MAGIC        = 2;
 
+let wasmMemory;
 let pslBuffer32;
 let pslBuffer8;
+let pslByteLength = 0;
 let hostnameArg = EMPTY_STRING;
 
 /******************************************************************************/
@@ -90,6 +92,33 @@ const fireChangedEvent = function() {
 
 /******************************************************************************/
 
+const allocateBuffers = function(byteLength) {
+    pslByteLength = byteLength + 3 & ~3;
+    if (
+        pslBuffer32 !== undefined &&
+        pslBuffer32.byteLength >= pslByteLength
+    ) {
+        return;
+    }
+    if ( wasmMemory !== undefined ) {
+        const newPageCount = pslByteLength + 0xFFFF >>> 16;
+        const curPageCount = wasmMemory.buffer.byteLength >>> 16;
+        const delta = newPageCount - curPageCount;
+        if ( delta > 0 ) {
+            wasmMemory.grow(delta);
+            pslBuffer32 = new Uint32Array(wasmMemory.buffer);
+            pslBuffer8 = new Uint8Array(wasmMemory.buffer);
+        }
+    } else {
+        pslBuffer8 = new Uint8Array(pslByteLength);
+        pslBuffer32 = new Uint32Array(pslBuffer8.buffer);
+    }
+    hostnameArg = '';
+    pslBuffer8[LABEL_INDICES_SLOT] = 0;
+};
+
+/******************************************************************************/
+
 // Parse and set a UTF-8 text-based suffix list. Format is same as found at:
 // http://publicsuffix.org/list/
 //
@@ -98,7 +127,12 @@ const fireChangedEvent = function() {
 // Suggestion: use <https://github.com/bestiejs/punycode.js>
 
 const parse = function(text, toAscii) {
-    const rootRule = { label: EMPTY_STRING, flags: 0, children: undefined };
+    // Use short property names for better minifying results
+    const rootRule = {
+        l: EMPTY_STRING,    // l => label
+        f: 0,               // f => flags
+        c: undefined        // c => children
+    };
 
     // Tree building
     {
@@ -121,27 +155,27 @@ const parse = function(text, toAscii) {
                 const label = rule.slice(beg + 1, end);
                 end = beg;
 
-                if ( Array.isArray(node.children) === false ) {
-                    const child = { label, flags: 0, children: undefined };
-                    node.children = [ child ];
+                if ( Array.isArray(node.c) === false ) {
+                    const child = { l: label, f: 0, c: undefined };
+                    node.c = [ child ];
                     node = child;
                     continue;
                 }
 
                 let left = 0;
-                let right = node.children.length;
+                let right = node.c.length;
                 while ( left < right ) {
                     const i = left + right >>> 1;
-                    const d = compareLabels(label, node.children[i].label);
+                    const d = compareLabels(label, node.c[i].l);
                     if ( d < 0 ) {
                         right = i;
                         if ( right === left ) {
                             const child = {
-                                label,
-                                flags: 0,
-                                children: undefined
+                                l: label,
+                                f: 0,
+                                c: undefined
                             };
-                            node.children.splice(left, 0, child);
+                            node.c.splice(left, 0, child);
                             node = child;
                             break;
                         }
@@ -151,24 +185,24 @@ const parse = function(text, toAscii) {
                         left = i + 1;
                         if ( left === right ) {
                             const child = {
-                                label,
-                                flags: 0,
-                                children: undefined
+                                l: label,
+                                f: 0,
+                                c: undefined
                             };
-                            node.children.splice(right, 0, child);
+                            node.c.splice(right, 0, child);
                             node = child;
                             break;
                         }
                         continue;
                     }
                     /* d === 0 */
-                    node = node.children[i];
+                    node = node.c[i];
                     break;
                 }
             }
-            node.flags |= 0b01;
+            node.f |= 0b01;
             if ( exception ) {
-                node.flags |= 0b10;
+                node.f |= 0b10;
             }
         };
 
@@ -227,40 +261,40 @@ const parse = function(text, toAscii) {
         };
 
         const storeNode = function(ibuf, node) {
-            const nChars = node.label.length;
-            const nChildren = node.children !== undefined
-                ? node.children.length
+            const nChars = node.l.length;
+            const nChildren = node.c !== undefined
+                ? node.c.length
                 : 0;
-            treeData[ibuf+0] = nChars << 24 | node.flags << 16 | nChildren;
+            treeData[ibuf+0] = nChildren << 16 | node.f << 8 | nChars;
             // char data
             if ( nChars <= 4 ) {
                 let v = 0;
                 if ( nChars > 0 ) {
-                    v |= node.label.charCodeAt(0);
+                    v |= node.l.charCodeAt(0);
                     if ( nChars > 1 ) {
-                        v |= node.label.charCodeAt(1) << 8;
+                        v |= node.l.charCodeAt(1) << 8;
                         if ( nChars > 2 ) {
-                            v |= node.label.charCodeAt(2) << 16;
+                            v |= node.l.charCodeAt(2) << 16;
                             if ( nChars > 3 ) {
-                                v |= node.label.charCodeAt(3) << 24;
+                                v |= node.l.charCodeAt(3) << 24;
                             }
                         }
                     }
                 }
                 treeData[ibuf+1] = v;
             } else {
-                let offset = labelToOffsetMap.get(node.label);
+                let offset = labelToOffsetMap.get(node.l);
                 if ( offset === undefined ) {
                     offset = charData.length;
                     for ( let i = 0; i < nChars; i++ ) {
-                        charData.push(node.label.charCodeAt(i));
+                        charData.push(node.l.charCodeAt(i));
                     }
-                    labelToOffsetMap.set(node.label, offset);
+                    labelToOffsetMap.set(node.l, offset);
                 }
                 treeData[ibuf+1] = offset;
             }
             // child nodes
-            if ( Array.isArray(node.children) === false ) {
+            if ( Array.isArray(node.c) === false ) {
                 treeData[ibuf+2] = 0;
                 return;
             }
@@ -268,7 +302,7 @@ const parse = function(text, toAscii) {
             const iarray = allocate(nChildren * 3);
             treeData[ibuf+2] = iarray;
             for ( let i = 0; i < nChildren; i++ ) {
-                storeNode(iarray + i * 3, node.children[i]);
+                storeNode(iarray + i * 3, node.c[i]);
             }
         };
 
@@ -283,12 +317,8 @@ const parse = function(text, toAscii) {
         treeData[CHARDATA_PTR_SLOT] = iCharData;
 
         const byteLength = (treeData.length << 2) + (charData.length + 3 & ~3);
-        const arrayBuffer = new ArrayBuffer(byteLength);
-
-        pslBuffer32 = new Uint32Array(arrayBuffer);
+        allocateBuffers(byteLength);
         pslBuffer32.set(treeData);
-
-        pslBuffer8 = new Uint8Array(arrayBuffer);
         pslBuffer8.set(charData, treeData.length << 2);
     }
 
@@ -329,32 +359,30 @@ const setHostnameArg = function(hostname) {
 //
 // WASM-able, because no information outside the buffer content is required.
 
-const getPublicSuffixPos = function() {
+const getPublicSuffixPosJS = function() {
     const buf8 = pslBuffer8;
     const buf32 = pslBuffer32;
     const iCharData = buf32[CHARDATA_PTR_SLOT];
 
     let iNode = pslBuffer32[RULES_PTR_SLOT];
-    let cursorPos = buf8[LABEL_INDICES_SLOT];
+    let cursorPos = -1;
     let iLabel = LABEL_INDICES_SLOT;
 
     // Label-lookup loop
     for (;;) {
         // Extract label indices
-        let labelBeg = buf8[iLabel+1];
+        const labelBeg = buf8[iLabel+1];
         const labelLen = buf8[iLabel+0] - labelBeg;
-        iLabel += 2;
         // Match-lookup loop: binary search
-        const nCandidates = buf32[iNode+0] & 0x0000FFFF;
-        if ( nCandidates === 0 ) { break; }
+        let r = buf32[iNode+0] >>> 16;
+        if ( r === 0 ) { break; }
         const iCandidates = buf32[iNode+2];
         let l = 0;
-        let r = nCandidates;
         let iFound = 0;
         while ( l < r ) {
             const iCandidate = l + r >>> 1;
-            const iCandidateNode = iCandidates + iCandidate * 3;
-            const candidateLen = buf32[iCandidateNode+0] >>> 24;
+            const iCandidateNode = iCandidates + iCandidate + (iCandidate << 1);
+            const candidateLen = buf32[iCandidateNode+0] & 0x000000FF;
             let d = labelLen - candidateLen;
             if ( d === 0 ) {
                 const iCandidateChar = candidateLen <= 4
@@ -382,24 +410,24 @@ const getPublicSuffixPos = function() {
         iNode = iFound;
         // 5. If the prevailing rule is a exception rule, modify it by
         //    removing the leftmost label.
-        if ( (buf32[iNode+0] & 0x00020000) !== 0 ) {
-            for (;;) {
-                if ( labelBeg === cursorPos ) { break; }
-                if ( buf8[labelBeg] === 0x2E /* '.' */ ) {
-                    return labelBeg + 1;
-                }
-                labelBeg += 1;
+        if ( (buf32[iNode+0] & 0x00000200) !== 0 ) {
+            if ( iLabel > LABEL_INDICES_SLOT ) {
+                return iLabel - 2;
             }
             break;
         }
-        if ( (buf32[iNode+0] & 0x00010000) !== 0 ) {
-            cursorPos = labelBeg;
+        if ( (buf32[iNode+0] & 0x00000100) !== 0 ) {
+            cursorPos = iLabel;
         }
         if ( labelBeg === 0 ) { break; }
+        iLabel += 2;
     }
 
     return cursorPos;
 };
+
+let getPublicSuffixPosWASM;
+let getPublicSuffixPos = getPublicSuffixPosJS;
 
 /******************************************************************************/
 
@@ -412,12 +440,13 @@ const getPublicSuffix = function(hostname) {
         return EMPTY_STRING;
     }
 
-    let cursorPos = getPublicSuffixPos();
-    if ( cursorPos === hostnameLen ) {
+    const cursorPos = getPublicSuffixPos();
+    if ( cursorPos === -1 ) {
         return EMPTY_STRING;
     }
 
-    return cursorPos === 0 ? hostnameArg : hostnameArg.slice(cursorPos);
+    const beg = buf8[cursorPos + 1];
+    return beg === 0 ? hostnameArg : hostnameArg.slice(beg);
 };
 
 /******************************************************************************/
@@ -431,20 +460,15 @@ const getDomain = function(hostname) {
         return EMPTY_STRING;
     }
 
-    let cursorPos = getPublicSuffixPos();
-    if ( cursorPos === hostnameLen || cursorPos === 0 ) {
+    const cursorPos = getPublicSuffixPos();
+    if ( cursorPos === -1 || buf8[cursorPos + 1] === 0 ) {
         return EMPTY_STRING;
     }
 
     // 7. The registered or registrable domain is the public suffix plus one
     //    additional label.
-    cursorPos -= 1; // skip dot
-    while ( buf8[cursorPos-1] !== 0x2E /* '.' */ ) {
-        cursorPos -= 1;
-        if ( cursorPos === 0 ) { break; }
-    }
-
-    return cursorPos === 0 ? hostnameArg : hostnameArg.slice(cursorPos);
+    const beg = buf8[cursorPos + 3];
+    return beg === 0 ? hostnameArg : hostnameArg.slice(beg);
 };
 
 /******************************************************************************/
@@ -452,6 +476,7 @@ const getDomain = function(hostname) {
 const toSelfie = function() {
     const selfie = {
         magic: SELFIE_MAGIC,
+        byteLength: pslByteLength,
         buffer: pslBuffer32 !== undefined
             ? Array.from(pslBuffer32)
             : null,
@@ -463,21 +488,13 @@ const fromSelfie = function(selfie) {
     if (
         selfie instanceof Object === false ||
         selfie.magic !== SELFIE_MAGIC ||
+        typeof selfie.byteLength !== 'number' ||
         Array.isArray(selfie.buffer) === false
     ) {
         return false;
     }
-    if (
-        pslBuffer32 !== undefined &&
-        pslBuffer32.length < selfie.buffer.length
-    ) {
-        pslBuffer32 = undefined;
-        pslBuffer8 = undefined;
-    }
-    if ( pslBuffer32 === undefined ) {
-        pslBuffer32 = new Uint32Array(selfie.buffer.length);
-        pslBuffer8 = new Uint8Array(pslBuffer32.buffer);
-    }
+
+    allocateBuffers(selfie.byteLength);
     pslBuffer32.set(selfie.buffer);
 
     // Important!
@@ -491,24 +508,111 @@ const fromSelfie = function(selfie) {
 
 /******************************************************************************/
 
-// TODO: load WASM module here (optional)
+// The WASM module is entirely optional, the JS implementation will be
+// used should the WASM module be unavailable for whatever reason.
+
+const enableWASM = (function() {
+    // The directory from which the current script was fetched should also
+    // contain the related WASM file. The script is fetched from a trusted
+    // location, and consequently so will be the related WASM file.
+    let workingDir;
+    {
+        const url = new URL(document.currentScript.src);
+        const match = /[^\/]+$/.exec(url.pathname);
+        if ( match !== null ) {
+            url.pathname = url.pathname.slice(0, match.index);
+        }
+        workingDir = url.href;
+    }
+
+    let memory;
+
+    return function() {
+        if ( getPublicSuffixPosWASM instanceof Function ) {
+            return Promise.resolve(true);
+        }
+
+        if (
+            typeof WebAssembly !== 'object' ||
+            typeof WebAssembly.instantiateStreaming !== 'function'
+        ) {
+            return Promise.resolve(false);
+        }
+
+        // The wasm code will work only if CPU is natively little-endian,
+        // as we use native uint32 array in our js code.
+        const uint32s = new Uint32Array(1);
+        const uint8s = new Uint8Array(uint32s.buffer);
+        uint32s[0] = 1;
+        if ( uint8s[0] !== 1 ) {
+            return Promise.resolve(false);
+        }
+
+        return fetch(
+            workingDir + 'wasm/publicsuffixlist.wasm',
+            { mode: 'same-origin' }
+        ).then(response => {
+            const pageCount = pslBuffer8 !== undefined
+                ? pslBuffer8.byteLength + 0xFFFF >>> 16
+                : 1;
+            memory = new WebAssembly.Memory({ initial: pageCount });
+            return WebAssembly.instantiateStreaming(
+                response,
+                { imports: { memory: memory } }
+            );
+        }).then(({ instance }) => {
+            const curPageCount = memory.buffer.byteLength;
+            const newPageCount = pslBuffer8 !== undefined
+                ? pslBuffer8.byteLength + 0xFFFF >>> 16
+                : 0;
+            if ( newPageCount > curPageCount ) {
+                memory.grow(newPageCount - curPageCount);
+            }
+            const buf8 = new Uint8Array(memory.buffer);
+            const buf32 = new Uint32Array(memory.buffer);
+            if ( pslBuffer32 !== undefined ) {
+                buf32.set(pslBuffer32);
+            }
+            pslBuffer8 = buf8;
+            pslBuffer32 = buf32;
+            wasmMemory = memory;
+            getPublicSuffixPosWASM = instance.exports.getPublicSuffixPos;
+            getPublicSuffixPos = getPublicSuffixPosWASM;
+            memory = undefined;
+            return true;
+        }).catch(reason => {
+            console.info(reason);
+            return false;
+        });
+    };
+})();
+
+const disableWASM = function() {
+    if ( getPublicSuffixPosWASM instanceof Function ) {
+        getPublicSuffixPos = getPublicSuffixPosJS;
+        getPublicSuffixPosWASM = undefined;
+    }
+    if ( wasmMemory !== undefined ) {
+        const buf8 = new Uint8Array(pslByteLength);
+        const buf32 = new Uint32Array(buf8.buffer);
+        buf32.set(pslBuffer32);
+        pslBuffer8 = buf8;
+        pslBuffer32 = buf32;
+        wasmMemory = undefined;
+    }
+};
 
 /******************************************************************************/
 
 context = context || window;
-
-// Keep v1 around if it is present -- for benchmark purpose only.
-if ( context.publicSuffixList !== undefined ) {
-    context.publicSuffixListV1 = context.publicSuffixList;
-}
 
 context.publicSuffixList = {
     version: '2.0',
     parse,
     getDomain,
     getPublicSuffix,
-    toSelfie,
-    fromSelfie
+    toSelfie, fromSelfie,
+    disableWASM, enableWASM,
 };
 
 if ( typeof module !== 'undefined' ) { 
