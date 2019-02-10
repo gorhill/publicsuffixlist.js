@@ -52,9 +52,9 @@
     Tree encoding in array buffer:
     
      Node:
-     + u16: length of array of children
-     +  u8: flags => bit 0: is_publicsuffix, bit 1: is_exception
      +  u8: length of char data
+     +  u8: flags => bit 0: is_publicsuffix, bit 1: is_exception
+     + u16: length of array of children
      + u32: char data or offset to char data
      + u32: offset to array of children
      = 12 bytes
