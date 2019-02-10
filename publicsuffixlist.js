@@ -478,7 +478,7 @@ const toSelfie = function() {
         magic: SELFIE_MAGIC,
         byteLength: pslByteLength,
         buffer: pslBuffer32 !== undefined
-            ? Array.from(pslBuffer32)
+            ? Array.from(new Uint32Array(pslBuffer32.buffer, 0, pslByteLength >>> 2))
             : null,
     };
     return selfie;
