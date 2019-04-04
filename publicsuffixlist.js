@@ -113,7 +113,7 @@ const allocateBuffers = function(byteLength) {
         pslBuffer8 = new Uint8Array(pslByteLength);
         pslBuffer32 = new Uint32Array(pslBuffer8.buffer);
     }
-    hostnameArg = '';
+    hostnameArg = EMPTY_STRING;
     pslBuffer8[LABEL_INDICES_SLOT] = 0;
 };
 
@@ -331,6 +331,7 @@ const setHostnameArg = function(hostname) {
     const buf = pslBuffer8;
     if ( hostname === hostnameArg ) { return buf[LABEL_INDICES_SLOT]; }
     if ( hostname === null || hostname.length === 0 ) {
+        hostnameArg = EMPTY_STRING;
         return (buf[LABEL_INDICES_SLOT] = 0);
     }
     hostname = hostname.toLowerCase();
@@ -515,7 +516,7 @@ const fromSelfie = function(selfie, decoder) {
     }
 
     // Important!
-    hostnameArg = '';
+    hostnameArg = EMPTY_STRING;
     pslBuffer8[LABEL_INDICES_SLOT] = 0;
 
     fireChangedEvent();

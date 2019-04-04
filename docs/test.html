@@ -168,6 +168,10 @@ function checkAll() {
     // This one was added because of
     // https://github.com/gorhill/publicsuffixlist.js/commit/f2939e1997ed2eee40d6ab7f4693bc09421fd9de
     checkPublicSuffix('dont.you.watch', 'you.watch');
+    // https://github.com/gorhill/uBlock/commit/f47ad8366e54be2072683ae0b11c4ce527903496
+    checkPublicSuffix('b.example.com', 'example.com');
+    checkPublicSuffix(null, null);
+    checkPublicSuffix('b.example.com', 'example.com');
 }
 </script>
 </body>
