@@ -331,6 +331,7 @@ const setHostnameArg = function(hostname) {
     const buf = pslBuffer8;
     if ( hostname === hostnameArg ) { return buf[LABEL_INDICES_SLOT]; }
     if ( hostname === null || hostname.length === 0 ) {
+        hostnameArg = '';
         return (buf[LABEL_INDICES_SLOT] = 0);
     }
     hostname = hostname.toLowerCase();
@@ -500,6 +501,7 @@ const fromSelfie = function(selfie, decoder) {
         }
         const bufferStr = selfie.slice(pos + 1);
         byteLength = decoder.decodeSize(bufferStr);
+        if ( byteLength === 0 ) { return false; }
         allocateBuffers(byteLength);
         decoder.decode(bufferStr, pslBuffer8.buffer);
     } else if (
@@ -578,7 +580,7 @@ const enableWASM = (function() {
                 { imports: { memory: memory } }
             );
         }).then(({ instance }) => {
-            const curPageCount = memory.buffer.byteLength;
+            const curPageCount = memory.buffer.byteLength >>> 16;
             const newPageCount = pslBuffer8 !== undefined
                 ? pslBuffer8.byteLength + 0xFFFF >>> 16
                 : 0;
