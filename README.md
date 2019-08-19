@@ -13,6 +13,18 @@ the link to understand why such a list is needed.
 
 See [test and benchmark](https://gorhill.github.io/publicsuffixlist.js/) pages.
 
+## API
+
+    context.publicSuffixList = {
+        version: '2.0',
+        parse,
+        getDomain,
+        getPublicSuffix,
+        suffixInPSL,
+        toSelfie, fromSelfie,
+        disableWASM, enableWASM,
+    };
+
 ## Usage
 
 
