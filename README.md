@@ -29,7 +29,7 @@ publicSuffixList = {
 
 ```html
 <script src="punycode.js"></script>
-<script type="module>
+<script type="module">
 import publicSuffixList from 'publicsuffixlist.js';
 
 /* … */
