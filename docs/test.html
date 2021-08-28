@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="punycode.min.js"></script>
-<script src="https://raw.githack.com/gorhill/publicsuffixlist.js/master/publicsuffixlist.js"></script>
 </head>
 <body style="font: 14px sans-serif">
 <h1>Tests</h1>
@@ -15,7 +14,9 @@ available on <a href="http://publicsuffix.org/list/">publicsuffix.org</a>.</p>
 
 <div id="result"></div>
 
-<script>
+<script type="module">
+import publicSuffixList from 'https://raw.githack.com/gorhill/publicsuffixlist.js/master/publicsuffixlist.js';
+
 function stdout(html) {
     const div = document.createElement('div');
     div.style.whiteSpace = 'pre-line';
@@ -56,16 +57,14 @@ fetch(
     publicSuffixList.parse(text, punycode.toASCII);
     stdout('JS');
     checkAll();
-    publicSuffixList.enableWASM().then(status => {
+    /*publicSuffixList.enableWASM().then(status => {
         if ( status === true ) {
             stdout('\nWASM');
             checkAll();
         }
-    });
+    });*/
 });
-</script>
 
-<script>
 function checkAll() {
     // Any copyright is dedicated to the Public Domain.
     // https://creativecommons.org/publicdomain/zero/1.0/
