@@ -19,6 +19,9 @@
     "url"
   ],
   "author": "Raymond Hill",
+  "contributors": [
+    "Manish Jethani <code@manishjethani.io>"
+  ],
   "license": "APL V2 or GPL V3",
   "bugs": {
     "url": "https://github.com/gorhill/publicsuffixlist.js/issues"
