@@ -15,8 +15,8 @@ See [test and benchmark](https://gorhill.github.io/publicsuffixlist.js/) pages.
 
 ## API
 ```js
-context.publicSuffixList = {
-    version: '2.0',
+publicSuffixList = {
+    version: '3.0',
     parse,
     getDomain,
     getPublicSuffix,
@@ -29,10 +29,8 @@ context.publicSuffixList = {
 
 ```html
 <script src="punycode.js"></script>
-<script src="publicsuffixlist.js"></script>
-```
-```js
-// window.publixSuffixList should now be present.
+<script type="module>
+import publicSuffixList from 'publicsuffixlist.js';
 
 /* … */
 
@@ -57,6 +55,8 @@ domain = window.publicSuffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
 // domain = 'xn--85x722f.xn--55qx5d.cn'
 
 // Etc.
+
+</script>
 ```
 
 ## Usage with node.js
@@ -65,10 +65,10 @@ domain = window.publicSuffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
 npm install gorhill/publicsuffixlist.js
 ```
 ```js
-const suffixList = require('publicsuffixlist');
+import suffixList from 'publicsuffixlist';
 // For utf-8 conversion - npm install punycode
-const punycode = require('punycode/'); 
-const fs = require('fs');
+import punycode from 'punycode';
+import fs from 'fs';
 
 // Suffix list downloaded from https://publicsuffix.org/list/public_suffix_list.dat
 const suffixData = fs.readFileSync('./public_suffix_list.dat', 'utf8');
