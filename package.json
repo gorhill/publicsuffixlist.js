@@ -1,8 +1,9 @@
 {
   "name": "publicsuffixlist",
-  "version": "2.0.0",
-  "description": "Javascript utility to handle Public Suffix List from Mozilla Foundation",
+  "version": "3.0.0",
+  "description": "JavaScript utility to handle Public Suffix List from Mozilla Foundation",
   "main": "publicsuffixlist.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -18,6 +19,9 @@
     "url"
   ],
   "author": "Raymond Hill",
+  "contributors": [
+    "Manish Jethani <code@manishjethani.io>"
+  ],
   "license": "APL V2 or GPL V3",
   "bugs": {
     "url": "https://github.com/gorhill/publicsuffixlist.js/issues"
