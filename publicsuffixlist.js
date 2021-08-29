@@ -13,7 +13,22 @@
 
 /*! Home: https://github.com/gorhill/publicsuffixlist.js -- GPLv3 APLv2 */
 
-/* globals WebAssembly, exports:true, module */
+/* jshint
+    browser: true,
+    eqeqeq: true,
+    esversion: 11,
+    laxbreak: true,
+    module: true,
+    node: true,
+    strict: global,
+    undef: true
+*/
+
+/* globals
+    WebAssembly,
+    exports: true,
+    module
+*/
 
 'use strict';
 
@@ -40,11 +55,6 @@
          additional label.
 
 */
-
-/******************************************************************************/
-
-export default (function() {
-// >>>>>>>> start of anonymous namespace
 
 /*******************************************************************************
 
@@ -636,7 +646,7 @@ const disableWASM = function() {
 
 /******************************************************************************/
 
-return ({
+export default {
     version: '3.0',
     parse,
     getDomain,
@@ -644,9 +654,6 @@ return ({
     getPublicSuffix,
     toSelfie, fromSelfie,
     disableWASM, enableWASM,
-});
+};
 
 /******************************************************************************/
-
-// <<<<<<<< end of anonymous namespace
-})();
