@@ -30,6 +30,7 @@ publicSuffixList = {
 ```html
 <script src="punycode.js"></script>
 <script type="module">
+
 import publicSuffixList from 'publicsuffixlist.js';
 
 /* … */
@@ -38,20 +39,20 @@ import publicSuffixList from 'publicsuffixlist.js';
 // `list` must be unicode text.
 // Need to pass a converter to punycode (punycode.js is
 // awesome: https://github.com/bestiejs/punycode.js).
-window.publicSuffixList.parse(list, punycode.toASCII);
+publicSuffixList.parse(list, punycode.toASCII);
 
 /* … */
 
 // Caller is responsible to pass in hostnames which are "canonicalized in the
 // normal way for hostnames": lower-case, punycode, and only a-z, 0-9, -, .
 
-let domain = window.publicSuffixList.getDomain('haha.whatisthis.global.prod.fastly.net');
+let domain = publicSuffixList.getDomain('haha.whatisthis.global.prod.fastly.net');
 // domain = 'whatisthis.global.prod.fastly.net'
 
-domain = window.publicSuffixList.getDomain('police.uk');
+domain = publicSuffixList.getDomain('police.uk');
 // domain = ''
 
-domain = window.publicSuffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
+domain = publicSuffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
 // domain = 'xn--85x722f.xn--55qx5d.cn'
 
 // Etc.
@@ -59,7 +60,7 @@ domain = window.publicSuffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
 </script>
 ```
 
-## Usage with node.js
+### Node.js
 
 ```sh
 npm install gorhill/publicsuffixlist.js
@@ -84,4 +85,23 @@ domain = suffixList.getDomain('police.uk');
 domain = suffixList.getDomain('www.xn--85x722f.xn--55qx5d.cn');
 // domain = 'xn--85x722f.xn--55qx5d.cn'
 
+```
+
+### Enable WebAssembly
+
+```js
+// Browser
+await publicSuffixList.enableWASM();
+
+// Node.js
+await publicSuffixList.enableWASM({
+    customFetch: fileURL => {
+        const buffer = fs.readFileSync(fileURL);
+        return ({
+            async arrayBuffer() {
+                return new Uint8Array(buffer).buffer;
+            }
+        });
+    }
+});
 ```

@@ -57,12 +57,12 @@ fetch(
     publicSuffixList.parse(text, punycode.toASCII);
     stdout('JS');
     checkAll();
-    /*publicSuffixList.enableWASM().then(status => {
+    publicSuffixList.enableWASM().then(status => {
         if ( status === true ) {
             stdout('\nWASM');
             checkAll();
         }
-    });*/
+    });
 });
 
 function checkAll() {
