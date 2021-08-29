@@ -229,7 +229,7 @@ const parse = function(text, toAscii) {
                     lineEnd = textEnd;
                 }
             }
-            let line = text.slice(lineBeg, lineEnd).trim();
+            let line = text.slice(lineBeg, lineEnd);
             lineBeg = lineEnd + 1;
 
             // Ignore comments
