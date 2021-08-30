@@ -557,9 +557,9 @@ const fromSelfie = function(selfie, decoder) {
 // The WASM module is entirely optional, the JS implementation will be
 // used should the WASM module be unavailable for whatever reason.
 
-const enableWASM = (( ) => {
-    let wasmPromise;
+let wasmPromise = null;
 
+const enableWASM = (( ) => {
     const wasmModuleFetcher = async ({ customFetch }) => {
         const url = new URL('wasm/publicsuffixlist.wasm', import.meta.url);
 
@@ -620,28 +620,32 @@ const enableWASM = (( ) => {
     };
 
     return async function({ customFetch } = {}) {
-        if ( getPublicSuffixPosWASM instanceof Function ) { return true; }
-        if ( wasmPromise instanceof Promise === false ) {
+        if ( wasmPromise === null ) {
             wasmPromise = getWasmInstance({ customFetch });
         }
         return wasmPromise;
     };
 })();
 
-const disableWASM = function() {
-    if ( getPublicSuffixPosWASM instanceof Function ) {
-        getPublicSuffixPos = getPublicSuffixPosJS;
-        getPublicSuffixPosWASM = undefined;
+const disableWASM = async function() {
+    let enabled = wasmPromise !== null ? await wasmPromise : false;
+
+    getPublicSuffixPos = getPublicSuffixPosJS;
+    getPublicSuffixPosWASM = undefined;
+
+    if ( wasmMemory !== undefined ) {
+        if ( pslBuffer32 !== undefined ) {
+            const buf8 = new Uint8Array(pslByteLength);
+            const buf32 = new Uint32Array(buf8.buffer);
+            buf32.set(pslBuffer32);
+            pslBuffer8 = buf8;
+            pslBuffer32 = buf32;
+        }
+        wasmMemory = undefined;
     }
-    if ( wasmMemory === undefined ) { return; }
-    if ( pslBuffer32 !== undefined ) {
-        const buf8 = new Uint8Array(pslByteLength);
-        const buf32 = new Uint32Array(buf8.buffer);
-        buf32.set(pslBuffer32);
-        pslBuffer8 = buf8;
-        pslBuffer32 = buf32;
-    }
-    wasmMemory = undefined;
+
+    wasmPromise = null;
+    return enabled;
 };
 
 /******************************************************************************/
