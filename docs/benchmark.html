@@ -24,9 +24,9 @@
 <script src="https://cdn.jsdelivr.net/npm/urijs@1.19.1/src/URI.min.js"></script>
 
 <script src="punycode.min.js"></script>
-<script>
+<script type="module">
 const pslV1URL = 'https://rawcdn.githack.com/gorhill/publicsuffixlist.js/f76f6bcdb7dcc951fa8e8739527fa3340469401e/publicsuffixlist.min.js';
-const pslV2URL = 'https://rawcdn.githack.com/gorhill/publicsuffixlist.js/1b9d19a2698c6990947556d2ad62d2166d1afe7e/publicsuffixlist.min.js';
+const pslV3URL = '../publicsuffixlist.js';
 const pslInstances = {};
 
 const urijs = new URI();
@@ -231,8 +231,8 @@ function compare() {
         console.log(`\ttldjs: ${tldjs.getDomain(hostname)}`);
         console.log(`\ttldts: ${tldts.getDomain(hostname)}`);
         console.log(`\tpslv1: ${pslInstances.v1.getDomain(hostname)}`);
-        console.log(`\tpsl(js)v2: ${pslInstances.v2JS.getDomain(hostname)}`);
-        console.log(`\tpsl(wasm)v2: ${pslInstances.v2WASM.getDomain(hostname)}`);
+        console.log(`\tpsl(js)v3: ${pslInstances.v3JS.getDomain(hostname)}`);
+        console.log(`\tpsl(wasm)v3: ${pslInstances.v3WASM.getDomain(hostname)}`);
     }
 }
 
@@ -283,16 +283,16 @@ function doPsljsV1Benchmark() {
     }
 }
 
-function doPslV2JSBenchmark() {
-    const psl = pslInstances.v2JS;
+function doPslV3JSBenchmark() {
+    const psl = pslInstances.v3JS;
     domains.length = 0;
     for ( const hostname of hostnamesRnd ) {
         domains.push(psl.getDomain(hostname));
     }
 }
 
-function doPslV2WASMBenchmark() {
-    const psl = pslInstances.v2WASM;
+function doPslV3WASMBenchmark() {
+    const psl = pslInstances.v3WASM;
     domains.length = 0;
     for ( const hostname of hostnamesRnd ) {
         domains.push(psl.getDomain(hostname));
@@ -319,17 +319,22 @@ benchmarkSuite
 
 const loadPSLScript = function(url, name) {
     return new Promise(resolve => {
-        const script = document.createElement('script');
-        script.src = url;
-        script.onload = script.onerror = function() {
-            if ( publicSuffixList instanceof Object === false ) {
-                return resolve(false);
-            }
-            pslInstances[name] = publicSuffixList;
-            publicSuffixList = undefined;
-            resolve(true);
-        };
-        document.head.append(script);
+        if ( url.startsWith('.') ) {
+            resolve(import(url));
+        } else {
+            const script = document.createElement('script');
+            script.src = url;
+            script.onload = script.onerror = function() {
+                resolve(publicSuffixList);
+                publicSuffixList = undefined;
+            };
+            document.head.append(script);
+        }
+    }).then(psl => {
+        if ( typeof psl.default !== 'undefined' ) { psl = psl.default; }
+        if ( psl instanceof Object === false ) { return false; }
+        pslInstances[name] = psl;
+        return true;
     });
 };
 
@@ -349,23 +354,23 @@ fetch(
             doPsljsV1Benchmark
         );
     }).then(( ) =>
-        loadPSLScript(pslV2URL, 'v2JS').then(status => {
+        loadPSLScript(pslV3URL, 'v3JS').then(status => {
             if ( status !== true ) { return; }
-            pslInstances.v2JS.parse(text, punycode.toASCII);
+            pslInstances.v3JS.parse(text, punycode.toASCII);
             benchmarkSuite.add(
-                'github.com/gorhill/publicsuffixlist.js v2 (JS)',
-                doPslV2JSBenchmark
+                'github.com/gorhill/publicsuffixlist.js v3 (JS)',
+                doPslV3JSBenchmark
             );
         })
     ).then(( ) =>
-        loadPSLScript(pslV2URL, 'v2WASM').then(status => {
+        loadPSLScript(pslV3URL, 'v3WASM').then(status => {
             if ( status !== true ) { return; }
-            pslInstances.v2WASM.parse(text, punycode.toASCII);
-            pslInstances.v2WASM.enableWASM().then(status => {
+            pslInstances.v3WASM.parse(text, punycode.toASCII);
+            pslInstances.v3WASM.enableWASM().then(status => {
                 if ( status !== true ) { return; }
                 benchmarkSuite.add(
-                    'github.com/gorhill/publicsuffixlist.js v2 (WASM)',
-                    doPslV2WASMBenchmark
+                    'github.com/gorhill/publicsuffixlist.js v3 (WASM)',
+                    doPslV3WASMBenchmark
                 );
             });
         })
