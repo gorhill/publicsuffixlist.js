@@ -5,7 +5,7 @@
   "main": "publicsuffixlist.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "c8 --include=publicsuffixlist.js mocha --experimental-vm-modules --no-warnings tests --check-leaks"
   },
   "repository": {
     "type": "git",
@@ -26,5 +26,14 @@
   "bugs": {
     "url": "https://github.com/gorhill/publicsuffixlist.js/issues"
   },
-  "homepage": "https://github.com/gorhill/publicsuffixlist.js"
+  "homepage": "https://github.com/gorhill/publicsuffixlist.js",
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.14.4"
+  },
+  "devDependencies": {
+    "c8": "^7.8.0",
+    "esm-world": "0.1.3",
+    "mocha": "^9.1.1"
+  }
 }

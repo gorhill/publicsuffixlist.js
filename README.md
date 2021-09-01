@@ -1,17 +1,22 @@
 # publicsuffixlist.js
 
-A javascript utility to make use of [Mozilla Foundation's Public Suffix
+A JavaScript utility to make use of [Mozilla Foundation's Public Suffix
 List](http://publicsuffix.org) ("PSL").
 
 ## Why?
 
-This is just an implementation to deal with domain while taking into account
+This is just an implementation to deal with domains while taking into account
 [Mozilla Foundation's Public Suffix List](http://publicsuffix.org). Follow
 the link to understand why such a list is needed.
 
 ## Test and benchmark
 
-See [test and benchmark](https://gorhill.github.io/publicsuffixlist.js/) pages.
+```
+npm install
+npm test
+```
+
+Also see [test and benchmark](https://gorhill.github.io/publicsuffixlist.js/) pages.
 
 ## API
 ```js
