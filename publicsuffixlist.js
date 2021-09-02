@@ -90,16 +90,6 @@ let hostnameArg = EMPTY_STRING;
 
 /******************************************************************************/
 
-const fireChangedEvent = function() {
-    if ( typeof window !== 'object' ) { return; }
-    if ( window instanceof Object === false ) { return; }
-    if ( window.dispatchEvent instanceof Function === false ) { return; }
-    if ( window.CustomEvent instanceof Function === false ) { return; }
-    window.dispatchEvent(new CustomEvent('publicSuffixListChanged'));
-};
-
-/******************************************************************************/
-
 const allocateBuffers = function(byteLength) {
     pslByteLength = byteLength + 3 & ~3;
     if (
@@ -329,8 +319,6 @@ const parse = function(text, toAscii) {
         pslBuffer32.set(treeData);
         pslBuffer8.set(charData, treeData.length << 2);
     }
-
-    fireChangedEvent();
 };
 
 /******************************************************************************/
@@ -546,8 +534,6 @@ const fromSelfie = function(selfie, decoder) {
     // Important!
     hostnameArg = EMPTY_STRING;
     pslBuffer8[LABEL_INDICES_SLOT] = 0;
-
-    fireChangedEvent();
 
     return true;
 };
