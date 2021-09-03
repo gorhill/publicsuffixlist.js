@@ -82,7 +82,7 @@ const CHARDATA_PTR_SLOT     = 101;  // 101 / 404
 const EMPTY_STRING          = '';
 const SELFIE_MAGIC          = 2;
 
-let wasmMemory;
+let wasmMemory = null;
 let pslBuffer32;
 let pslBuffer8;
 let pslByteLength = 0;
@@ -98,7 +98,7 @@ const allocateBuffers = function(byteLength) {
     ) {
         return;
     }
-    if ( wasmMemory !== undefined ) {
+    if ( wasmMemory !== null ) {
         const newPageCount = pslByteLength + 0xFFFF >>> 16;
         const curPageCount = wasmMemory.buffer.byteLength >>> 16;
         const delta = newPageCount - curPageCount;
@@ -618,7 +618,7 @@ const disableWASM = async function() {
     getPublicSuffixPos = getPublicSuffixPosJS;
     getPublicSuffixPosWASM = undefined;
 
-    if ( wasmMemory !== undefined ) {
+    if ( wasmMemory !== null ) {
         if ( pslBuffer32 !== undefined ) {
             const buf8 = new Uint8Array(pslByteLength);
             const buf32 = new Uint32Array(buf8.buffer);
@@ -626,7 +626,7 @@ const disableWASM = async function() {
             pslBuffer8 = buf8;
             pslBuffer32 = buf32;
         }
-        wasmMemory = undefined;
+        wasmMemory = null;
     }
 
     wasmPromise = null;
