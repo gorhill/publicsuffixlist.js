@@ -489,9 +489,9 @@ const suffixInPSL = function(hostname) {
 
 /******************************************************************************/
 
-const toSelfie = function(encoder) {
+const toSelfie = function(encoder = null) {
     if ( pslBuffer8 === undefined ) { return ''; }
-    if ( encoder instanceof Object ) {
+    if ( encoder !== null ) {
         const bufferStr = encoder.encode(pslBuffer8.buffer, pslByteLength);
         return `${SELFIE_MAGIC}\t${bufferStr}`;
     }
@@ -503,12 +503,12 @@ const toSelfie = function(encoder) {
     };
 };
 
-const fromSelfie = function(selfie, decoder) {
+const fromSelfie = function(selfie, decoder = null) {
     let byteLength = 0;
     if (
         typeof selfie === 'string' &&
         selfie.length !== 0 &&
-        decoder instanceof Object
+        decoder !== null
     ) {
         const pos = selfie.indexOf('\t');
         if ( pos === -1 || selfie.slice(0, pos) !== `${SELFIE_MAGIC}` ) {
@@ -520,7 +520,6 @@ const fromSelfie = function(selfie, decoder) {
         allocateBuffers(byteLength);
         decoder.decode(bufferStr, pslBuffer8.buffer);
     } else if (
-        selfie instanceof Object &&
         selfie.magic === SELFIE_MAGIC &&
         Array.isArray(selfie.buf32)
     ) {
@@ -549,7 +548,7 @@ const enableWASM = (( ) => {
     const wasmModuleFetcher = async ({ customFetch }) => {
         const url = new URL('wasm/publicsuffixlist.wasm', import.meta.url);
 
-        if ( typeof customFetch !== 'undefined' ) {
+        if ( customFetch !== null ) {
             const response = await customFetch(url);
             return WebAssembly.compile(await response.arrayBuffer());
         }
@@ -605,7 +604,7 @@ const enableWASM = (( ) => {
         return false;
     };
 
-    return async function({ customFetch } = {}) {
+    return async function({ customFetch = null } = {}) {
         if ( wasmPromise === null ) {
             wasmPromise = getWasmInstance({ customFetch });
         }
