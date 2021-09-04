@@ -83,8 +83,8 @@ const EMPTY_STRING          = '';
 const SELFIE_MAGIC          = 2;
 
 let wasmMemory = null;
-let pslBuffer32;
-let pslBuffer8;
+let pslBuffer32 = null;
+let pslBuffer8 = null;
 let pslByteLength = 0;
 let hostnameArg = EMPTY_STRING;
 
@@ -93,7 +93,7 @@ let hostnameArg = EMPTY_STRING;
 const allocateBuffers = function(byteLength) {
     pslByteLength = byteLength + 3 & ~3;
     if (
-        pslBuffer32 !== undefined &&
+        pslBuffer32 !== null &&
         pslBuffer32.byteLength >= pslByteLength
     ) {
         return;
@@ -282,7 +282,7 @@ const parse = function(text, toAscii) {
                 treeData[ibuf+1] = v;
             } else {
                 let offset = labelToOffsetMap.get(node.l);
-                if ( offset === undefined ) {
+                if ( typeof offset === 'undefined' ) {
                     offset = charData.length;
                     for ( let i = 0; i < nChars; i++ ) {
                         charData.push(node.l.charCodeAt(i));
@@ -424,13 +424,13 @@ const getPublicSuffixPosJS = function() {
     return cursorPos;
 };
 
-let getPublicSuffixPosWASM;
+let getPublicSuffixPosWASM = null;
 let getPublicSuffixPos = getPublicSuffixPosJS;
 
 /******************************************************************************/
 
 const getPublicSuffix = function(hostname) {
-    if ( pslBuffer32 === undefined ) { return EMPTY_STRING; }
+    if ( pslBuffer32 === null ) { return EMPTY_STRING; }
 
     const hostnameLen = setHostnameArg(hostname);
     const buf8 = pslBuffer8;
@@ -450,7 +450,7 @@ const getPublicSuffix = function(hostname) {
 /******************************************************************************/
 
 const getDomain = function(hostname) {
-    if ( pslBuffer32 === undefined ) { return EMPTY_STRING; }
+    if ( pslBuffer32 === null ) { return EMPTY_STRING; }
 
     const hostnameLen = setHostnameArg(hostname);
     const buf8 = pslBuffer8;
@@ -472,7 +472,7 @@ const getDomain = function(hostname) {
 /******************************************************************************/
 
 const suffixInPSL = function(hostname) {
-    if ( pslBuffer32 === undefined ) { return false; }
+    if ( pslBuffer32 === null ) { return false; }
 
     const hostnameLen = setHostnameArg(hostname);
     const buf8 = pslBuffer8;
@@ -490,7 +490,7 @@ const suffixInPSL = function(hostname) {
 /******************************************************************************/
 
 const toSelfie = function(encoder = null) {
-    if ( pslBuffer8 === undefined ) { return ''; }
+    if ( pslBuffer8 === null ) { return ''; }
     if ( encoder !== null ) {
         const bufferStr = encoder.encode(pslBuffer8.buffer, pslByteLength);
         return `${SELFIE_MAGIC}\t${bufferStr}`;
@@ -570,7 +570,7 @@ const enableWASM = (( ) => {
             if (  module instanceof WebAssembly.Module === false ) {
                 return false;
             }
-            const pageCount = pslBuffer8 !== undefined
+            const pageCount = pslBuffer8 !== null
                 ? pslBuffer8.byteLength + 0xFFFF >>> 16
                 : 1;
             const memory = new WebAssembly.Memory({ initial: pageCount });
@@ -581,13 +581,13 @@ const enableWASM = (( ) => {
                 return false;
             }
             const curPageCount = memory.buffer.byteLength >>> 16;
-            const newPageCount = pslBuffer8 !== undefined
+            const newPageCount = pslBuffer8 !== null
                 ? pslBuffer8.byteLength + 0xFFFF >>> 16
                 : 0;
             if ( newPageCount > curPageCount ) {
                 memory.grow(newPageCount - curPageCount);
             }
-            if ( pslBuffer32 !== undefined ) {
+            if ( pslBuffer32 !== null ) {
                 const buf8 = new Uint8Array(memory.buffer);
                 const buf32 = new Uint32Array(memory.buffer);
                 buf32.set(pslBuffer32);
@@ -616,10 +616,10 @@ const disableWASM = async function() {
     let enabled = wasmPromise !== null ? await wasmPromise : false;
 
     getPublicSuffixPos = getPublicSuffixPosJS;
-    getPublicSuffixPosWASM = undefined;
+    getPublicSuffixPosWASM = null;
 
     if ( wasmMemory !== null ) {
-        if ( pslBuffer32 !== undefined ) {
+        if ( pslBuffer32 !== null ) {
             const buf8 = new Uint8Array(pslByteLength);
             const buf32 = new Uint32Array(buf8.buffer);
             buf32.set(pslBuffer32);
