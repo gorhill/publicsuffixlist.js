@@ -19,6 +19,19 @@ const content = readFileSync('./docs/public_suffix_list.dat', 'utf8');
 
 let publicSuffixList = null;
 
+function isOptionSet(name) {
+    return process.argv.slice(2).includes(name);
+}
+
+function customFetch(fileURL) {
+    const buffer = readFileSync(fileURL);
+    return ({
+        async arrayBuffer() {
+            return new Uint8Array(buffer).buffer;
+        }
+    });
+}
+
 function wait(milliseconds) {
     return new Promise(resolve => {
         setTimeout(resolve, milliseconds);
@@ -53,7 +66,7 @@ function saveHeapSnapshot(name) {
 
     await runGC();
 
-    if ( process.argv[2] === '--heap-snapshot' ) {
+    if ( isOptionSet('--heap-snapshot') ) {
         saveHeapSnapshot(`${now}--initial`);
     }
 
@@ -62,6 +75,12 @@ function saveHeapSnapshot(name) {
     publicSuffixList = (await import('../publicsuffixlist.js')).default;
 
     printMemoryUsage('On import():', await memoryUsage());
+
+    if ( isOptionSet('--use-wasm') ) {
+        await publicSuffixList.enableWASM({ customFetch });
+
+        printMemoryUsage('On enableWASM():', await memoryUsage());
+    }
 
     publicSuffixList.parse(content, domainToASCII);
 
@@ -83,7 +102,7 @@ function saveHeapSnapshot(name) {
 
     await runGC();
 
-    if ( process.argv[2] === '--heap-snapshot' ) {
+    if ( isOptionSet('--heap-snapshot') ) {
         saveHeapSnapshot(`${now}--after-gc`);
     }
 
