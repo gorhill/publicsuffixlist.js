@@ -141,7 +141,7 @@ class PublicSuffixList {
         const rootRule = {
             l: EMPTY_STRING,    // l => label
             f: 0,               // f => flags
-            c: undefined        // c => children
+            c: null             // c => children
         };
 
         // Tree building
@@ -166,7 +166,7 @@ class PublicSuffixList {
                     end = beg;
 
                     if ( Array.isArray(node.c) === false ) {
-                        const child = { l: label, f: 0, c: undefined };
+                        const child = { l: label, f: 0, c: null };
                         node.c = [ child ];
                         node = child;
                         continue;
@@ -183,7 +183,7 @@ class PublicSuffixList {
                                 const child = {
                                     l: label,
                                     f: 0,
-                                    c: undefined
+                                    c: null
                                 };
                                 node.c.splice(left, 0, child);
                                 node = child;
@@ -197,7 +197,7 @@ class PublicSuffixList {
                                 const child = {
                                     l: label,
                                     f: 0,
-                                    c: undefined
+                                    c: null
                                 };
                                 node.c.splice(right, 0, child);
                                 node = child;
@@ -272,7 +272,7 @@ class PublicSuffixList {
 
             const storeNode = function(ibuf, node) {
                 const nChars = node.l.length;
-                const nChildren = node.c !== undefined
+                const nChildren = node.c !== null
                     ? node.c.length
                     : 0;
                 treeData[ibuf+0] = nChildren << 16 | node.f << 8 | nChars;
