@@ -645,3 +645,40 @@ class PublicSuffixList {
 export default new PublicSuffixList();
 
 /******************************************************************************/
+
+const psURL = new URL('ws://x');
+
+// Experimental alternative to punycode.js but only for entries in the public
+// suffix list.
+
+export function publicSuffixToASCII(publicSuffix) {
+    // If the public suffix contains an underscore as a label, consider it an
+    // error.
+    if ( /(^|\.)_(\.|$)/u.test(publicSuffix) )
+        return '';
+
+    // https://publicsuffix.org/list/
+
+    // The asterisk is not a valid domain name character. A public suffix can't
+    // contain underscores as labels. The underscore is a valid domain name
+    // character. Therefore, we convert asterisks as labels to underscores as
+    // labels. e.g. state.*.us becomes state._.us
+    publicSuffix = publicSuffix.replace(/(^|\.)\*(\.|$)/gu, '$1_$2');
+
+    // Set the hostname to "x" first.
+    psURL.hostname = 'x';
+
+    // Let the URL object do the conversion.
+    psURL.hostname = publicSuffix;
+    const converted = psURL.hostname;
+
+    // If the converted hostname is "x" and the original hostname is not "x" it
+    // means there was an error.
+    if ( converted === 'x' && publicSuffix !== 'x' )
+        return '';
+
+    // Convert underscores as labels back to asterisks as labels.
+    return converted.replace(/(^|\.)_(\.|$)/gu, '$1*$2');
+}
+
+/******************************************************************************/

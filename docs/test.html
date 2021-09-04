@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="punycode.min.js"></script>
 </head>
 <body style="font: 14px sans-serif">
 <h1>Tests</h1>
@@ -15,7 +14,8 @@ available on <a href="http://publicsuffix.org/list/">publicsuffix.org</a>.</p>
 <div id="result"></div>
 
 <script type="module">
-import publicSuffixList from 'https://raw.githack.com/gorhill/publicsuffixlist.js/master/publicsuffixlist.js';
+import publicSuffixList from '../publicsuffixlist.js';
+import { publicSuffixToASCII } from '../publicsuffixlist.js';
 
 function stdout(html) {
     const div = document.createElement('div');
@@ -31,8 +31,8 @@ const resultTemplateBad = '<span style="color:red">Failure: got {{r}} instead</s
 function checkPublicSuffix(a, b) {
     // publicSuffixList() does not normalize Unicode, it is the caller's
     // responsibility, because overhead etc.
-    const anorm = a ? punycode.toASCII(a) : a;
-    const bnorm = b ? punycode.toASCII(b) : b;
+    const anorm = a ? publicSuffixToASCII(a) : a;
+    const bnorm = b ? publicSuffixToASCII(b) : b;
 
     let r = publicSuffixList.getDomain(anorm);
     if ( !r ) {
@@ -54,7 +54,7 @@ fetch(
 }).then(response =>
     response.text()
 ).then(text => {
-    publicSuffixList.parse(text, punycode.toASCII);
+    publicSuffixList.parse(text, publicSuffixToASCII);
     stdout('JS');
     checkAll();
     publicSuffixList.enableWASM().then(status => {
