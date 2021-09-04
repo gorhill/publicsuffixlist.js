@@ -90,7 +90,7 @@ let hostnameArg = EMPTY_STRING;
 
 /******************************************************************************/
 
-const allocateBuffers = function(byteLength) {
+function allocateBuffers(byteLength) {
     pslByteLength = byteLength + 3 & ~3;
     if (
         pslBuffer32 !== null &&
@@ -113,7 +113,7 @@ const allocateBuffers = function(byteLength) {
     }
     hostnameArg = EMPTY_STRING;
     pslBuffer8[LABEL_INDICES_SLOT] = 0;
-};
+}
 
 /******************************************************************************/
 
@@ -124,7 +124,7 @@ const allocateBuffers = function(byteLength) {
 // Public Suffix List contains unicode characters.
 // Suggestion: use <https://github.com/bestiejs/punycode.js>
 
-const parse = function(text, toAscii) {
+function parse(text, toAscii) {
     // Use short property names for better minifying results
     const rootRule = {
         l: EMPTY_STRING,    // l => label
@@ -319,11 +319,11 @@ const parse = function(text, toAscii) {
         pslBuffer32.set(treeData);
         pslBuffer8.set(charData, treeData.length << 2);
     }
-};
+}
 
 /******************************************************************************/
 
-const setHostnameArg = function(hostname) {
+function setHostnameArg(hostname) {
     const buf = pslBuffer8;
     if ( hostname === hostnameArg ) { return buf[LABEL_INDICES_SLOT]; }
     if ( hostname === null || hostname.length === 0 ) {
@@ -348,7 +348,7 @@ const setHostnameArg = function(hostname) {
     }
     buf[j] = 0;
     return n;
-};
+}
 
 /******************************************************************************/
 
@@ -356,7 +356,7 @@ const setHostnameArg = function(hostname) {
 //
 // WASM-able, because no information outside the buffer content is required.
 
-const getPublicSuffixPosJS = function() {
+function getPublicSuffixPosJS() {
     const buf8 = pslBuffer8;
     const buf32 = pslBuffer32;
     const iCharData = buf32[CHARDATA_PTR_SLOT];
@@ -422,14 +422,14 @@ const getPublicSuffixPosJS = function() {
     }
 
     return cursorPos;
-};
+}
 
 let getPublicSuffixPosWASM = null;
 let getPublicSuffixPos = getPublicSuffixPosJS;
 
 /******************************************************************************/
 
-const getPublicSuffix = function(hostname) {
+function getPublicSuffix(hostname) {
     if ( pslBuffer32 === null ) { return EMPTY_STRING; }
 
     const hostnameLen = setHostnameArg(hostname);
@@ -445,11 +445,11 @@ const getPublicSuffix = function(hostname) {
 
     const beg = buf8[cursorPos + 1];
     return beg === 0 ? hostnameArg : hostnameArg.slice(beg);
-};
+}
 
 /******************************************************************************/
 
-const getDomain = function(hostname) {
+function getDomain(hostname) {
     if ( pslBuffer32 === null ) { return EMPTY_STRING; }
 
     const hostnameLen = setHostnameArg(hostname);
@@ -467,11 +467,11 @@ const getDomain = function(hostname) {
     //    additional label.
     const beg = buf8[cursorPos + 3];
     return beg === 0 ? hostnameArg : hostnameArg.slice(beg);
-};
+}
 
 /******************************************************************************/
 
-const suffixInPSL = function(hostname) {
+function suffixInPSL(hostname) {
     if ( pslBuffer32 === null ) { return false; }
 
     const hostnameLen = setHostnameArg(hostname);
@@ -485,11 +485,11 @@ const suffixInPSL = function(hostname) {
     return cursorPos !== -1 &&
            buf8[cursorPos + 1] === 0 &&
            buf8[SUFFIX_NOT_FOUND_SLOT] !== 1;
-};
+}
 
 /******************************************************************************/
 
-const toSelfie = function(encoder = null) {
+function toSelfie(encoder = null) {
     if ( pslBuffer8 === null ) { return ''; }
     if ( encoder !== null ) {
         const bufferStr = encoder.encode(pslBuffer8.buffer, pslByteLength);
@@ -501,9 +501,9 @@ const toSelfie = function(encoder = null) {
             new Uint32Array(pslBuffer8.buffer, 0, pslByteLength >>> 2)
         ),
     };
-};
+}
 
-const fromSelfie = function(selfie, decoder = null) {
+function fromSelfie(selfie, decoder = null) {
     let byteLength = 0;
     if (
         typeof selfie === 'string' &&
@@ -535,7 +535,7 @@ const fromSelfie = function(selfie, decoder = null) {
     pslBuffer8[LABEL_INDICES_SLOT] = 0;
 
     return true;
-};
+}
 
 /******************************************************************************/
 
@@ -544,7 +544,7 @@ const fromSelfie = function(selfie, decoder = null) {
 
 let wasmPromise = null;
 
-const enableWASM = (( ) => {
+async function enableWASM({ customFetch = null } = {}) {
     const wasmModuleFetcher = async ({ customFetch }) => {
         const url = new URL('wasm/publicsuffixlist.wasm', import.meta.url);
 
@@ -604,15 +604,14 @@ const enableWASM = (( ) => {
         return false;
     };
 
-    return async function({ customFetch = null } = {}) {
-        if ( wasmPromise === null ) {
-            wasmPromise = getWasmInstance({ customFetch });
-        }
-        return wasmPromise;
-    };
-})();
+    if ( wasmPromise === null ) {
+        wasmPromise = getWasmInstance({ customFetch });
+    }
 
-const disableWASM = async function() {
+    return wasmPromise;
+}
+
+async function disableWASM() {
     let enabled = wasmPromise !== null ? await wasmPromise : false;
 
     getPublicSuffixPos = getPublicSuffixPosJS;
@@ -631,7 +630,7 @@ const disableWASM = async function() {
 
     wasmPromise = null;
     return enabled;
-};
+}
 
 /******************************************************************************/
 
