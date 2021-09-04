@@ -33,18 +33,17 @@ publicSuffixList = {
 ## Usage
 
 ```html
-<script src="punycode.js"></script>
 <script type="module">
-
 import publicSuffixList from 'publicsuffixlist.js';
+
+// See https://github.com/mathiasbynens/punycode.js for an alternative.
+const domainToASCII = domain => new URL('ws://' + domain).hostname;
 
 /* … */
 
 // Feed it the list (you choose how you obtain it).
 // `list` must be unicode text.
-// Need to pass a converter to punycode (punycode.js is
-// awesome: https://github.com/bestiejs/punycode.js).
-publicSuffixList.parse(list, punycode.toASCII);
+publicSuffixList.parse(list, domainToASCII);
 
 /* … */
 
@@ -72,14 +71,13 @@ npm install gorhill/publicsuffixlist.js
 ```
 ```js
 import suffixList from 'publicsuffixlist';
-// For utf-8 conversion - npm install punycode
-import punycode from 'punycode';
+import { domainToASCII } from 'url';
 import fs from 'fs';
 
 // Suffix list downloaded from https://publicsuffix.org/list/public_suffix_list.dat
 const suffixData = fs.readFileSync('./public_suffix_list.dat', 'utf8');
 
-suffixList.parse(suffixData, punycode.toASCII);
+suffixList.parse(suffixData, domainToASCII);
 
 let domain = suffixList.getDomain('haha.whatisthis.global.prod.fastly.net');
 // domain = 'whatisthis.global.prod.fastly.net'
