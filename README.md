@@ -33,17 +33,16 @@ publicSuffixList = {
 ## Usage
 
 ```html
+<!-- https://github.com/mathiasbynens/punycode.js -->
+<script src="punycode.js"></script>
 <script type="module">
 import publicSuffixList from 'publicsuffixlist.js';
-
-// See https://github.com/mathiasbynens/punycode.js for an alternative.
-const domainToASCII = domain => new URL('ws://' + domain).hostname;
 
 /* … */
 
 // Feed it the list (you choose how you obtain it).
 // `list` must be unicode text.
-publicSuffixList.parse(list, domainToASCII);
+publicSuffixList.parse(list, punycode.toASCII);
 
 /* … */
 
