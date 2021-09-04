@@ -563,7 +563,7 @@ class PublicSuffixList {
             return WebAssembly.compileStreaming(fetch(url));
         };
 
-        const getWasmInstance = async function({ customFetch }) {
+        const getWasmInstance = async ({ customFetch }) => {
             if ( typeof WebAssembly !== 'object' ) { return false; }
             // The wasm code will work only if CPU is natively little-endian,
             // as we use native uint32 array in our js code.
