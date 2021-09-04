@@ -23,6 +23,7 @@
 <!-- https://www.jsdelivr.com/package/npm/urijs -->
 <script src="https://cdn.jsdelivr.net/npm/urijs@1.19.1/src/URI.min.js"></script>
 
+<script src="punycode.min.js"></script>
 <script type="module">
 const pslV1URL = 'https://rawcdn.githack.com/gorhill/publicsuffixlist.js/f76f6bcdb7dcc951fa8e8739527fa3340469401e/publicsuffixlist.min.js';
 const pslV3URL = '../publicsuffixlist.js';
@@ -195,10 +196,6 @@ const hostnamePool = (function(){
     return hostnames;
 })();
 
-function domainToASCII(domain) {
-    return new URL('ws://' + domain).hostname;
-}
-
 // Extract a random sample of hostnames from the pool
 function createRandomHostnameSample(pool, n) {
     var result = [];
@@ -351,7 +348,7 @@ fetch(
 ).then(text =>
     loadPSLScript(pslV1URL, 'v1').then(status => {
         if ( status !== true ) { return false; }
-        pslInstances.v1.parse(text, domainToASCII);
+        pslInstances.v1.parse(text, punycode.toASCII);
         benchmarkSuite.add(
             'github.com/gorhill/publicsuffixlist.js v1',
             doPsljsV1Benchmark
@@ -359,7 +356,7 @@ fetch(
     }).then(( ) =>
         loadPSLScript(pslV3URL, 'v3JS').then(status => {
             if ( status !== true ) { return; }
-            pslInstances.v3JS.parse(text, domainToASCII);
+            pslInstances.v3JS.parse(text, punycode.toASCII);
             benchmarkSuite.add(
                 'github.com/gorhill/publicsuffixlist.js v3 (JS)',
                 doPslV3JSBenchmark
@@ -368,7 +365,7 @@ fetch(
     ).then(( ) =>
         loadPSLScript(pslV3URL, 'v3WASM').then(status => {
             if ( status !== true ) { return; }
-            pslInstances.v3WASM.parse(text, domainToASCII);
+            pslInstances.v3WASM.parse(text, punycode.toASCII);
             pslInstances.v3WASM.enableWASM().then(status => {
                 if ( status !== true ) { return; }
                 benchmarkSuite.add(
