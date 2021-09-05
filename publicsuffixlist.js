@@ -242,16 +242,18 @@ class PublicSuffixList {
 
                 // Ignore surrounding whitespaces
                 line = line.trim();
-                if ( line.length === 0 ) { continue; }
 
-                const exception = line.charCodeAt(0) === 0x21 /* '!' */;
+                const exception = line.length > 0 && line.charCodeAt(0) === 0x21 /* '!' */;
                 if ( exception ) {
                     line = line.slice(1);
                 }
 
-                if ( mustPunycode.test(line) ) {
+                if ( line.length > 0 && mustPunycode.test(line) ) {
                     line = toAscii(line.toLowerCase());
                 }
+
+                // https://en.wikipedia.org/wiki/Hostname#Syntax
+                if ( line.length === 0 || line.length > 253 ) { continue; }
 
                 addToTree(line, exception);
             }
