@@ -109,3 +109,14 @@ await publicSuffixList.enableWASM({
     }
 });
 ```
+
+## Development
+
+```
+npm install
+npm test
+npm run docs-test
+npm run show-memory-usage
+npm run show-memory-usage -- --use-wasm
+npm run show-memory-usage -- --heap-snapshot
+```
