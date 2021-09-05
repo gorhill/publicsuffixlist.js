@@ -219,7 +219,7 @@ class PublicSuffixList {
             // 2. If no rules match, the prevailing rule is "*".
             addToTree('*', false);
 
-            const mustPunycode = /[^a-z0-9.-]/;
+            const mustPunycode = /[^*a-z0-9.-]/;
             const textEnd = text.length;
             let lineBeg = 0;
 
