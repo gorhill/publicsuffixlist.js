@@ -1,3 +1,5 @@
+[![Tests](https://github.com/gorhill/publicsuffixlist.js/actions/workflows/tests.yml/badge.svg)](https://github.com/gorhill/publicsuffixlist.js/actions/workflows/tests.yml)
+
 # publicsuffixlist.js
 
 A JavaScript utility to make use of [Mozilla Foundation's Public Suffix
