@@ -1,3 +1,5 @@
+[![Tests](https://github.com/gorhill/publicsuffixlist.js/actions/workflows/tests.yml/badge.svg)](https://github.com/gorhill/publicsuffixlist.js/actions/workflows/tests.yml)
+
 # publicsuffixlist.js
 
 A JavaScript utility to make use of [Mozilla Foundation's Public Suffix
@@ -107,3 +109,25 @@ await publicSuffixList.enableWASM({
     }
 });
 ```
+
+## Development
+
+```
+npm install
+npm test
+npm run docs-test
+npm run show-memory-usage
+npm run show-memory-usage -- --use-wasm
+npm run show-memory-usage -- --heap-snapshot
+```
+
+Before submitting a
+[patch](https://github.com/gorhill/publicsuffixlist.js/pulls), please run both
+`npm test` and `npm run docs-test` to make sure that there are no errors.
+
+If a change is likely to affect __memory usage__, please run
+`npm run show-memory-usage` both with and without `--use-wasm` and share the
+output in the pull request description.
+
+To analyze the heap, run `npm run show-memory-usage -- --heap-snapshot` and
+open the generated `.heapsnapshot` files in the browser's memory profiler.
