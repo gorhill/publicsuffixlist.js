@@ -16,7 +16,6 @@ jobs:
       uses: actions/setup-node@v2
       with:
         node-version: '14'
-        cache: 'npm'
 
     - name: Run tests
       run: npm run docs-test
