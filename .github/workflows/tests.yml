@@ -19,3 +19,6 @@ jobs:
 
     - name: Run tests
       run: npm run docs-test
+
+    - name: Run fuzzer
+      run: npm run fuzz-to-kill

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "docs-test": "node scripts/docs-test.js",
+    "fuzz-to-kill": "node scripts/fuzz-to-kill.js",
     "show-memory-usage": "node --expose-gc scripts/show-memory-usage.js",
     "test": "c8 --include=publicsuffixlist.js mocha --experimental-vm-modules --no-warnings tests --check-leaks"
   },
