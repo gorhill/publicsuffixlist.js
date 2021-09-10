@@ -15,7 +15,7 @@ import { createWriteStream, readFileSync } from 'fs';
 import { domainToASCII } from 'url';
 import v8 from 'v8';
 
-const content = readFileSync('./docs/public_suffix_list.dat', 'utf8');
+const content = readFileSync('./tests/data/public_suffix_list.dat', 'utf8');
 
 let publicSuffixList = null;
 

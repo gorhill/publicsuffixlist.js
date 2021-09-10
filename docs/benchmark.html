@@ -339,7 +339,7 @@ const loadPSLScript = function(url, name) {
 };
 
 fetch(
-    'public_suffix_list.dat'
+    '../tests/data/public_suffix_list.dat'
 ).catch(reason => {
     console.info(reason)
     return fetch('https://publicsuffix.org/list/public_suffix_list.dat')
