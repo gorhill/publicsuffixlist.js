@@ -165,7 +165,7 @@ function checkAll() {
 }
 
 (async function () {
-    const text = readFileSync('./docs/public_suffix_list.dat', 'utf8');
+    const text = readFileSync('./tests/data/public_suffix_list.dat', 'utf8');
 
     publicSuffixList.parse(text, domainToASCII);
     console.log('JS');
