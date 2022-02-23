@@ -248,12 +248,14 @@ class PublicSuffixList {
                     line = line.slice(1);
                 }
 
-                if ( line.length > 0 && mustPunycode.test(line) ) {
+                if ( line.length === 0 ) { continue; }
+
+                if ( mustPunycode.test(line) ) {
                     line = toAscii(line.toLowerCase());
                 }
 
                 // https://en.wikipedia.org/wiki/Hostname#Syntax
-                if ( line.length === 0 || line.length > 253 ) { continue; }
+                if ( line.length > 253 ) { continue; }
 
                 addToTree(line, exception);
             }
@@ -415,7 +417,7 @@ class PublicSuffixList {
             }
             // 2. If no rules match, the prevailing rule is "*".
             if ( iFound === 0 ) {
-                if ( buf8[iCandidates + 1 << 2] !== 0x2A /* '*' */ ) { break; }
+                if ( buf32[iCandidates + 1] !== 0x2A /* '*' */ ) { break; }
                 buf8[SUFFIX_NOT_FOUND_SLOT] = 1;
                 iFound = iCandidates;
             }
