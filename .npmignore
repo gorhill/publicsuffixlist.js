@@ -1,5 +1,7 @@
-node_modules/
+.github/
 coverage/
+docs/
+node_modules/
 scripts/
 tests/
 *.heapsnapshot

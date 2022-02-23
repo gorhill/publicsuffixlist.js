@@ -1,3 +1,4 @@
+[![NPM](https://img.shields.io/npm/v/@gorhill/publicsuffixlist)](https://www.npmjs.com/package/@gorhill/publicsuffixlist)
 [![Tests](https://github.com/gorhill/publicsuffixlist.js/actions/workflows/tests.yml/badge.svg)](https://github.com/gorhill/publicsuffixlist.js/actions/workflows/tests.yml)
 
 # publicsuffixlist.js

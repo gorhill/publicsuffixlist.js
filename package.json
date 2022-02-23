@@ -1,9 +1,9 @@
 {
-  "name": "publicsuffixlist",
+  "name": "@gorhill/publicsuffixlist",
   "version": "3.0.1",
   "description": "JavaScript utility to handle Public Suffix List from Mozilla Foundation",
-  "main": "publicsuffixlist.js",
   "type": "module",
+  "main": "publicsuffixlist.js",
   "scripts": {
     "docs-test": "node scripts/docs-test.js",
     "show-memory-usage": "node --expose-gc scripts/show-memory-usage.js",
@@ -20,7 +20,7 @@
     "tld",
     "url"
   ],
-  "author": "Raymond Hill",
+  "author": "Raymond Hill (https://github.com/gorhill)",
   "contributors": [
     "Manish Jethani <code@manishjethani.io>"
   ],
@@ -28,7 +28,7 @@
   "bugs": {
     "url": "https://github.com/gorhill/publicsuffixlist.js/issues"
   },
-  "homepage": "https://github.com/gorhill/publicsuffixlist.js",
+  "homepage": "https://github.com/gorhill/publicsuffixlist.js#readme",
   "engines": {
     "node": ">=14.0.0",
     "npm": ">=6.14.4"
